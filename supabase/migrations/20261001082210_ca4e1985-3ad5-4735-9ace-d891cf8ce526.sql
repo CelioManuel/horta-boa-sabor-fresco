@@ -1,0 +1,207 @@
+CREATE TYPE public.app_role AS ENUM ('admin', 'operator', 'customer');
+CREATE TYPE public.order_status AS ENUM ('received', 'preparing', 'on_the_way', 'almost_there', 'delivered', 'cancelled');
+CREATE TYPE public.payment_method AS ENUM ('mpesa', 'emola', 'pos', 'cash');
+CREATE TYPE public.payment_status AS ENUM ('pending', 'paid');
+
+CREATE TABLE public.profiles (
+  id uuid PRIMARY KEY,
+  full_name text NOT NULL DEFAULT '',
+  phone text NOT NULL DEFAULT '',
+  nuit text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT ALL ON public.profiles TO service_role;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE public.user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  role public.app_role NOT NULL DEFAULT 'customer',
+  UNIQUE (user_id, role)
+);
+GRANT SELECT ON public.user_roles TO authenticated;
+GRANT ALL ON public.user_roles TO service_role;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
+$$;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated;
+
+CREATE POLICY "profiles_own_read" ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "profiles_own_insert" ON public.profiles FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
+CREATE POLICY "profiles_own_update" ON public.profiles FOR UPDATE TO authenticated USING (id = auth.uid() OR public.has_role(auth.uid(), 'admin')) WITH CHECK (id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "roles_own_read" ON public.user_roles FOR SELECT TO authenticated USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+
+CREATE TABLE public.products (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  category text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  unit_label text NOT NULL DEFAULT 'kg',
+  min_quantity numeric(10,2) NOT NULL DEFAULT 1 CHECK (min_quantity > 0),
+  price numeric(12,2) NOT NULL CHECK (price >= 0),
+  stock numeric(12,2) NOT NULL DEFAULT 0 CHECK (stock >= 0),
+  image_key text NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  is_featured boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.products TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.products TO authenticated;
+GRANT ALL ON public.products TO service_role;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "products_public_read" ON public.products FOR SELECT TO anon, authenticated USING (is_active OR public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "products_admin_manage" ON public.products FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin')) WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+CREATE TABLE public.stores (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  address text NOT NULL,
+  phone text NOT NULL DEFAULT '',
+  delivery_radius_km numeric(8,2) NOT NULL DEFAULT 15,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.stores TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.stores TO authenticated;
+GRANT ALL ON public.stores TO service_role;
+ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "stores_public_read" ON public.stores FOR SELECT TO anon, authenticated USING (is_active OR public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "stores_admin_manage" ON public.stores FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin')) WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+CREATE TABLE public.user_addresses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  label text NOT NULL,
+  address text NOT NULL,
+  city text NOT NULL DEFAULT 'Maputo',
+  latitude numeric(10,7),
+  longitude numeric(10,7),
+  is_default boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_addresses TO authenticated;
+GRANT ALL ON public.user_addresses TO service_role;
+ALTER TABLE public.user_addresses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "addresses_own" ON public.user_addresses FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+CREATE TABLE public.orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_number bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE,
+  user_id uuid NOT NULL,
+  store_id uuid REFERENCES public.stores(id) ON DELETE SET NULL,
+  operator_id uuid,
+  status public.order_status NOT NULL DEFAULT 'received',
+  payment_method public.payment_method NOT NULL,
+  payment_status public.payment_status NOT NULL DEFAULT 'pending',
+  delivery_address text NOT NULL,
+  subtotal numeric(12,2) NOT NULL CHECK (subtotal >= 0),
+  delivery_fee numeric(12,2) NOT NULL DEFAULT 0 CHECK (delivery_fee >= 0),
+  discount numeric(12,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
+  total numeric(12,2) NOT NULL CHECK (total >= 0),
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE ON public.orders TO authenticated;
+GRANT ALL ON public.orders TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.orders_order_number_seq TO authenticated, service_role;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "orders_customer_read" ON public.orders FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "orders_customer_create" ON public.orders FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+CREATE POLICY "orders_operator_read" ON public.orders FOR SELECT TO authenticated USING (operator_id = auth.uid() AND public.has_role(auth.uid(), 'operator'));
+CREATE POLICY "orders_operator_update" ON public.orders FOR UPDATE TO authenticated USING (operator_id = auth.uid() AND public.has_role(auth.uid(), 'operator')) WITH CHECK (operator_id = auth.uid() AND public.has_role(auth.uid(), 'operator'));
+CREATE POLICY "orders_admin_manage" ON public.orders FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin')) WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+CREATE TABLE public.order_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  product_id uuid REFERENCES public.products(id) ON DELETE SET NULL,
+  product_name text NOT NULL,
+  unit_label text NOT NULL,
+  quantity numeric(10,2) NOT NULL CHECK (quantity > 0),
+  unit_price numeric(12,2) NOT NULL CHECK (unit_price >= 0),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT ON public.order_items TO authenticated;
+GRANT ALL ON public.order_items TO service_role;
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "order_items_visible" ON public.order_items FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_id AND (o.user_id = auth.uid() OR o.operator_id = auth.uid() OR public.has_role(auth.uid(), 'admin'))));
+CREATE POLICY "order_items_customer_create" ON public.order_items FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_id AND o.user_id = auth.uid()));
+
+CREATE TABLE public.notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL,
+  order_id uuid REFERENCES public.orders(id) ON DELETE CASCADE,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, UPDATE, DELETE ON public.notifications TO authenticated;
+GRANT ALL ON public.notifications TO service_role;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "notifications_own" ON public.notifications FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+CREATE TABLE public.promotions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  code text NOT NULL UNIQUE,
+  discount_percent numeric(5,2) NOT NULL CHECK (discount_percent > 0 AND discount_percent <= 100),
+  starts_at timestamptz NOT NULL,
+  ends_at timestamptz NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.promotions TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.promotions TO authenticated;
+GRANT ALL ON public.promotions TO service_role;
+ALTER TABLE public.promotions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "promotions_public_read" ON public.promotions FOR SELECT TO anon, authenticated USING (is_active AND starts_at <= now() AND ends_at >= now());
+CREATE POLICY "promotions_admin_manage" ON public.promotions FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'admin')) WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+CREATE TABLE public.operator_stock (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id uuid NOT NULL,
+  product_id uuid NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  quantity numeric(12,2) NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(operator_id, product_id)
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.operator_stock TO authenticated;
+GRANT ALL ON public.operator_stock TO service_role;
+ALTER TABLE public.operator_stock ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "operator_stock_own" ON public.operator_stock FOR ALL TO authenticated USING (operator_id = auth.uid() OR public.has_role(auth.uid(), 'admin')) WITH CHECK (operator_id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+
+CREATE OR REPLACE FUNCTION public.touch_updated_at() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
+CREATE TRIGGER profiles_touch BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER products_touch BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER stores_touch BEFORE UPDATE ON public.stores FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER addresses_touch BEFORE UPDATE ON public.user_addresses FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER orders_touch BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER promotions_touch BEFORE UPDATE ON public.promotions FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
+INSERT INTO public.products (name, category, description, unit_label, min_quantity, price, stock, image_key, is_featured) VALUES
+('Tomate Fresco', 'Frutos', 'Tomate maduro, firme e selecionado diariamente.', 'kg', 1, 85, 120, 'tomate', true),
+('Batata Reno', 'Tubérculos', 'Batata versátil para cozer, fritar ou assar.', 'kg', 1, 65, 180, 'batata', true),
+('Cenoura', 'Raízes', 'Cenoura crocante, doce e rica em cor.', 'kg', 1, 70, 95, 'cenoura', true),
+('Cebola', 'Bolbos', 'Cebola dourada de sabor equilibrado.', 'kg', 1, 60, 140, 'cebola', false),
+('Repolho Verde', 'Folhas', 'Repolho fresco, compacto e colhido localmente.', 'unidade', 1, 55, 75, 'repolho', true),
+('Pimento Verde', 'Frutos', 'Pimento verde fresco e aromático.', 'kg', 0.5, 120, 60, 'pimento', false),
+('Alface', 'Folhas', 'Alface tenra e lavada na colheita.', 'unidade', 1, 45, 80, 'alface', false),
+('Pepino', 'Frutos', 'Pepino fresco e estaladiço.', 'kg', 1, 75, 70, 'pepino', false),
+('Beterraba', 'Raízes', 'Beterraba de cor intensa e sabor doce.', 'kg', 1, 80, 55, 'beterraba', false),
+('Couve', 'Folhas', 'Molho de couve fresca para refeições nutritivas.', 'molho', 1, 40, 90, 'couve', false),
+('Abóbora', 'Frutos', 'Abóbora doce vendida ao quilograma.', 'kg', 1, 50, 110, 'abobora', false),
+('Alho', 'Bolbos', 'Alho aromático de boa conservação.', '250 g', 1, 95, 45, 'alho', false);
+
+INSERT INTO public.stores (name, address, phone, delivery_radius_km) VALUES ('Horta Boa — Maputo', 'Av. de Moçambique, Maputo', '+258 84 000 0000', 20);
+INSERT INTO public.promotions (name, code, discount_percent, starts_at, ends_at) VALUES ('Primeira Colheita', 'HORTA10', 10, now() - interval '1 day', now() + interval '1 year');
