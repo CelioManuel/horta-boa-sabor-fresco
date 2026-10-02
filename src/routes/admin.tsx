@@ -1,0 +1,3 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { HortaBoaApp } from "@/components/HortaBoaApp";
+export const Route = createFileRoute("/admin")({ head: () => ({ meta: [{ title: "Gestão — Horta Boa" }, { name: "description", content: "Gestão operacional da Horta Boa." }, { property: "og:title", content: "Gestão — Horta Boa" }, { property: "og:description", content: "Painel de gestão Horta Boa." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: () => <HortaBoaApp view="admin" /> });
