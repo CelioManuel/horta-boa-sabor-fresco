@@ -19,6 +19,8 @@
  */
 
 @theme inline {
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "DM Serif Display", serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -59,29 +61,45 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-forest: var(--forest);
+  --color-leaf-soft: var(--leaf-soft);
+  --color-tomato: var(--tomato);
+  --color-tomato-foreground: var(--tomato-foreground);
+  --color-harvest: var(--harvest);
+  --color-harvest-foreground: var(--harvest-foreground);
+  --color-harvest-deep: var(--harvest-deep);
+  --color-overlay: var(--overlay);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --radius: 0.5rem;
+  --background: oklch(0.985 0.008 102);
+  --foreground: oklch(0.245 0.04 135);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.245 0.04 135);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(0.39 0.12 142);
+  --primary-foreground: oklch(0.99 0.008 105);
+  --secondary: oklch(0.94 0.035 112);
+  --secondary-foreground: oklch(0.3 0.07 137);
+  --muted: oklch(0.955 0.014 100);
+  --muted-foreground: oklch(0.52 0.035 125);
+  --accent: oklch(0.93 0.045 120);
+  --accent-foreground: oklch(0.31 0.08 140);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.89 0.025 110);
+  --input: oklch(0.86 0.03 110);
+  --ring: oklch(0.52 0.12 142);
+  --forest: oklch(0.27 0.085 143);
+  --leaf-soft: oklch(0.94 0.05 126);
+  --tomato: oklch(0.59 0.2 32);
+  --tomato-foreground: oklch(0.99 0.006 95);
+  --harvest: oklch(0.79 0.155 79);
+  --harvest-foreground: oklch(0.25 0.055 75);
+  --harvest-deep: oklch(0.47 0.12 72);
+  --overlay: oklch(0.12 0.03 140 / 0.62);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -140,5 +158,58 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    margin: 0;
   }
+
+  button, a, input { letter-spacing: 0; }
+}
+
+@utility bg-hero-overlay {
+  background: linear-gradient(90deg, oklch(0.2 0.07 142 / 0.9) 0%, oklch(0.22 0.07 142 / 0.58) 46%, transparent 78%);
+}
+
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@utility product-photo {
+  position: relative;
+  aspect-ratio: 1 / 0.83;
+  background-image: url("/src/assets/horta-boa-products.jpg");
+  background-size: 300% 200%;
+  background-repeat: no-repeat;
+}
+
+@utility product-thumb {
+  width: 6rem;
+  flex: 0 0 6rem;
+  border-radius: var(--radius-md);
+  aspect-ratio: 1;
+  background-image: url("/src/assets/horta-boa-products.jpg");
+  background-size: 300% 200%;
+  background-repeat: no-repeat;
+}
+
+@utility product-mini {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-sm);
+  background-image: url("/src/assets/horta-boa-products.jpg");
+  background-size: 300% 200%;
+  background-repeat: no-repeat;
+}
+
+@utility product-tomate { background-position: 0% 0%; }
+@utility product-batata { background-position: 50% 0%; }
+@utility product-cenoura { background-position: 100% 0%; }
+@utility product-cebola { background-position: 0% 100%; }
+@utility product-repolho { background-position: 50% 100%; }
+@utility product-pimento { background-position: 100% 100%; }
+@utility product-generic { background-position: 50% 50%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }

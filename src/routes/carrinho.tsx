@@ -1,0 +1,3 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { HortaBoaApp } from "@/components/HortaBoaApp";
+export const Route = createFileRoute("/carrinho")({ head: () => ({ meta: [{ title: "Carrinho — Horta Boa" }, { name: "description", content: "Reveja os produtos e finalize a sua encomenda." }, { property: "og:title", content: "Carrinho — Horta Boa" }, { property: "og:description", content: "Finalize a sua encomenda de hortícolas frescos." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: () => <HortaBoaApp view="cart" /> });
