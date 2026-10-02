@@ -19,10 +19,18 @@ function AuthPage() {
     event.preventDefault(); setBusy(true); setMessage("");
     if (signup) {
       const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin, data: { full_name: name } } });
-      if (error) setMessage(error.message); else if (data.user) { await supabase.from("profiles").insert({ id: data.user.id, full_name: name }); await supabase.from("user_roles").insert({ user_id: data.user.id, role: "customer" }); setMessage("Confirme o email que enviámos para concluir o registo."); }
+      if (error) setMessage(error.message); else if (data.user) setMessage("Confirme o email que enviámos para concluir o registo.");
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMessage("Email ou palavra-passe incorretos."); else await navigate({ to: "/produtos" });
+      if (error) setMessage("Email ou palavra-passe incorretos."); else {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) {
+          const fullName = typeof data.user.user_metadata.full_name === "string" ? data.user.user_metadata.full_name : "";
+          await supabase.from("profiles").upsert({ id: data.user.id, full_name: fullName });
+          await supabase.from("user_roles").upsert({ user_id: data.user.id, role: "customer" }, { onConflict: "user_id,role" });
+        }
+        await navigate({ to: "/produtos" });
+      }
     }
     setBusy(false);
   }
