@@ -5,4 +5,4 @@
 - [x] Add independent Cloud data, roles and access rules
 - [x] Add customer account, cart, checkout and order history
 - [x] Add operator and administration views
-- [ ] Verify the live preview on desktop and mobile
+- [x] Verify the live preview on desktop and mobile

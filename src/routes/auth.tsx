@@ -25,7 +25,7 @@ function AuthPage() {
       if (error) setMessage("Email ou palavra-passe incorretos."); else {
         const { data } = await supabase.auth.getUser();
         if (data.user) {
-          const fullName = typeof data.user.user_metadata.full_name === "string" ? data.user.user_metadata.full_name : "";
+          const fullName = typeof data.user.user_metadata["full_name"] === "string" ? data.user.user_metadata["full_name"] : "";
           await supabase.from("profiles").upsert({ id: data.user.id, full_name: fullName });
           await supabase.from("user_roles").upsert({ user_id: data.user.id, role: "customer" }, { onConflict: "user_id,role" });
         }

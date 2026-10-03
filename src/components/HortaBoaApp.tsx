@@ -14,6 +14,7 @@ import logoMark from "@/assets/horta-boa-mark.png";
 type View = "catalog" | "cart" | "orders" | "account" | "admin" | "operator";
 type DbProduct = { id: string; name: string; category: string; price: number; unit_label: string; min_quantity: number; image_key: string; stock: number; description: string; is_featured: boolean };
 type Order = { id: string; order_number: number; status: string; payment_status: string; total: number; delivery_address: string; created_at: string };
+type AppRole = "admin" | "operator" | "customer";
 
 const fallbackProducts: DbProduct[] = [
   ["tomate", "Tomate Fresco", "Frutos", 85, "kg", 1, 120, "Tomate maduro, firme e selecionado diariamente."],
@@ -35,6 +36,8 @@ export function HortaBoaApp({ view }: { view: View }) {
   const [category, setCategory] = useState("Todos");
   const [menuOpen, setMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
+  const [identityReady, setIdentityReady] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [notice, setNotice] = useState("");
 
@@ -42,7 +45,14 @@ export function HortaBoaApp({ view }: { view: View }) {
     void supabase.from("products").select("id,name,category,price,unit_label,min_quantity,image_key,stock,description,is_featured").eq("is_active", true).order("is_featured", { ascending: false }).then(({ data }) => {
       if (data?.length) setProducts(data.map((item) => ({ ...item, price: Number(item.price), min_quantity: Number(item.min_quantity), stock: Number(item.stock) })));
     });
-    void supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null));
+    void supabase.auth.getUser().then(async ({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+      if (data.user) {
+        const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).maybeSingle();
+        setRole((roleRow?.role as AppRole | undefined) ?? "customer");
+      }
+      setIdentityReady(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -99,8 +109,8 @@ export function HortaBoaApp({ view }: { view: View }) {
       {view === "cart" && <Cart lines={lines} subtotal={subtotal} notice={notice} change={change} remove={remove} placeOrder={placeOrder} />}
       {view === "orders" && <Orders orders={orders} signedIn={Boolean(userEmail)} />}
       {view === "account" && <Account email={userEmail} signOut={signOut} />}
-      {view === "admin" && <Admin products={products} orders={orders} />}
-      {view === "operator" && <Operator />}
+      {view === "admin" && (identityReady && role === "admin" ? <Admin products={products} orders={orders} /> : <RestrictedArea ready={identityReady} signedIn={Boolean(userEmail)} />)}
+      {view === "operator" && (identityReady && (role === "operator" || role === "admin") ? <Operator /> : <RestrictedArea ready={identityReady} signedIn={Boolean(userEmail)} />)}
 
       {notice && view !== "cart" && <button className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-md bg-foreground px-4 py-3 text-sm font-medium text-background shadow-xl" onClick={() => setNotice("")}>{notice}</button>}
       <MobileNav count={count} />
@@ -144,3 +154,4 @@ function MobileLink({ to, icon: Icon, label, badge }: { to: "/" | "/produtos" | 
 function PageTitle({ title, subtitle, back = false }: { title: string; subtitle: string; back?: boolean }) { return <div className="mb-8 flex items-start gap-3">{back && <Button variant="ghost" size="icon" asChild><Link to="/produtos"><ArrowLeft /></Link></Button>}<div><h1 className="font-display text-3xl sm:text-4xl">{title}</h1><p className="mt-1 text-sm text-muted-foreground">{subtitle}</p></div></div>; }
 function Empty({ icon: Icon, title, text, action, to }: { icon: typeof Package; title: string; text: string; action: string; to: "/produtos" | "/auth" }) { return <div className="mx-auto flex max-w-md flex-col items-center py-20 text-center"><span className="flex h-20 w-20 items-center justify-center rounded-full bg-leaf-soft text-primary"><Icon className="h-9 w-9" /></span><h2 className="mt-5 font-display text-2xl">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p><Button className="mt-6" asChild><Link to={to}>{action}<ChevronRight /></Link></Button></div>; }
 function Feature({ icon: Icon, title, text }: { icon: typeof Sprout; title: string; text: string }) { return <div className="flex gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><Icon /></span><div><strong className="font-display text-lg">{title}</strong><p className="mt-1 text-sm leading-5 text-muted-foreground">{text}</p></div></div>; }
+function RestrictedArea({ ready, signedIn }: { ready: boolean; signedIn: boolean }) { if (!ready) return <main className="flex min-h-[70vh] items-center justify-center"><span className="text-sm text-muted-foreground">A confirmar acesso…</span></main>; return <main className="mx-auto min-h-[70vh] max-w-lg px-5 py-20 text-center"><span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-leaf-soft text-primary"><Settings className="h-9 w-9" /></span><h1 className="mt-5 font-display text-3xl">Área reservada</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{signedIn ? "A sua conta não tem permissão para aceder a esta área." : "Entre com uma conta autorizada para continuar."}</p><Button className="mt-6" asChild><Link to={signedIn ? "/" : "/auth"}>{signedIn ? "Voltar à loja" : "Entrar"}</Link></Button></main>; }
