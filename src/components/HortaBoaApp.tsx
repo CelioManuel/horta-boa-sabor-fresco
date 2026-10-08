@@ -17,12 +17,12 @@ type Order = { id: string; order_number: number; status: string; payment_status:
 type AppRole = "admin" | "operator" | "customer";
 
 const fallbackProducts: DbProduct[] = [
-  ["tomate", "Tomate Fresco", "Frutos", 85, "kg", 1, 120, "Tomate maduro, firme e selecionado diariamente."],
-  ["batata", "Batata Reno", "Tubérculos", 65, "kg", 1, 180, "Ideal para cozer, fritar ou assar."],
-  ["cenoura", "Cenoura", "Raízes", 70, "kg", 1, 95, "Crocante, doce e rica em cor."],
-  ["cebola", "Cebola", "Bolbos", 60, "kg", 1, 140, "Cebola dourada de sabor equilibrado."],
-  ["repolho", "Repolho Verde", "Folhas", 55, "unidade", 1, 75, "Fresco, compacto e colhido localmente."],
-  ["pimento", "Pimento Verde", "Frutos", 120, "kg", .5, 60, "Fresco e aromático."],
+  ["tomate", "Tomate Fresco", "Frutos", 800, "caixa de 10 kg", 1, 40, "Tomate maduro, firme e selecionado diariamente."],
+  ["batata", "Batata Reno", "Tubérculos", 600, "saco de 10 kg", 1, 50, "Ideal para cozer, fritar ou assar."],
+  ["cenoura", "Cenoura", "Raízes", 330, "saco de 5 kg", 1, 30, "Crocante, doce e rica em cor."],
+  ["cebola", "Cebola", "Bolbos", 550, "saco de 10 kg", 1, 45, "Cebola dourada de sabor equilibrado."],
+  ["repolho", "Repolho Verde", "Folhas", 250, "saco de 5 unidades", 1, 25, "Fresco, compacto e colhido localmente."],
+  ["pimento", "Pimento Verde", "Frutos", 560, "caixa de 5 kg", 1, 15, "Fresco e aromático."],
 ].map(([key, name, category, price, unit, minimum, stock, description], index) => ({ id: String(key), image_key: String(key), name: String(name), category: String(category), price: Number(price), unit_label: String(unit), min_quantity: Number(minimum), stock: Number(stock), description: String(description), is_featured: index < 4 }));
 
 const statusLabel: Record<string, string> = { received: "Recebida", preparing: "Em preparação", on_the_way: "A caminho", almost_there: "Quase a chegar", delivered: "Entregue", cancelled: "Cancelada" };
