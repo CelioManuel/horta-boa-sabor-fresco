@@ -113,6 +113,19 @@ export function HortaBoaApp({ view }: { view: View }) {
       {view === "operator" && (identityReady && (role === "operator" || role === "admin") ? <Operator /> : <RestrictedArea ready={identityReady} signedIn={Boolean(userEmail)} />)}
 
       {notice && view !== "cart" && <button className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-md bg-foreground px-4 py-3 text-sm font-medium text-background shadow-xl" onClick={() => setNotice("")}>{notice}</button>}
+      {view === "catalog" && count > 0 && (
+        <Link to="/carrinho" className="fixed bottom-[4.75rem] left-3 right-3 z-40 lg:bottom-4 lg:left-auto lg:right-6 lg:w-96">
+          <span className="flex items-center gap-3 rounded-lg bg-primary px-4 py-3 text-primary-foreground shadow-xl transition hover:bg-primary/90">
+            <ShoppingCart className="h-5 w-5 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <strong className="block text-sm leading-tight">Ver carrinho</strong>
+              <span className="text-xs text-primary-foreground/80">{count} {count === 1 ? "artigo" : "artigos"}</span>
+            </span>
+            <strong className="shrink-0 text-sm">{subtotal.toLocaleString("pt-MZ")} MZN</strong>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          </span>
+        </Link>
+      )}
       <MobileNav count={count} />
     </div>
   );
