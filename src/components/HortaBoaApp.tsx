@@ -49,8 +49,9 @@ export function HortaBoaApp({ view }: { view: View }) {
     void supabase.auth.getUser().then(async ({ data }) => {
       setUserEmail(data.user?.email ?? null);
       if (data.user) {
-        const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).maybeSingle();
-        setRole((roleRow?.role as AppRole | undefined) ?? "customer");
+        const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+        const roles = (roleRows ?? []).map((row) => row.role as AppRole);
+        setRole(roles.includes("admin") ? "admin" : roles.includes("operator") ? "operator" : "customer");
       }
       setIdentityReady(true);
     });
