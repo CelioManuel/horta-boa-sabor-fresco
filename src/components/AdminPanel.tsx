@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Package, Pencil, Plus, Save, Sprout, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { productImageKeys } from "@/lib/product-images";
 import { supabase } from "@/integrations/supabase/client";
 
 type Role = "admin" | "operator" | "customer";
@@ -48,6 +49,7 @@ export function AdminPanel() {
     if (error) { await supabase.from("products").update({ is_active: false }).eq("id", p.id); flash("Produto tem encomendas — foi desativado."); } else flash("Produto removido.");
     void loadProducts();
   };
+  const toggleVisible = async (p: Product) => { await supabase.from("products").update({ is_active: !p.is_active }).eq("id", p.id); void loadProducts(); };
   const setStock = async (p: Product, stock: number) => { await supabase.from("products").update({ stock: Math.max(0, stock) }).eq("id", p.id); void loadProducts(); };
   const toggleRole = async (person: Person, role: Role) => {
     const has = person.roles.includes(role);
@@ -83,7 +85,7 @@ export function AdminPanel() {
         <label className="text-sm">Embalagem (ex.: saco de 10 kg)<input className={input} value={editing.unit_label} onChange={(e) => setEditing({ ...editing, unit_label: e.target.value })} /></label>
         <label className="text-sm">Preço (MZN)<input type="number" className={input} value={editing.price} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></label>
         <label className="text-sm">Stock (embalagens)<input type="number" className={input} value={editing.stock} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value) })} /></label>
-        <label className="text-sm">Imagem<select className={input} value={editing.image_key} onChange={(e) => setEditing({ ...editing, image_key: e.target.value })}>{["tomate", "batata", "cenoura", "cebola", "repolho", "pimento", "generic"].map((k) => <option key={k}>{k}</option>)}</select></label>
+        <label className="text-sm">Imagem<select className={input} value={editing.image_key} onChange={(e) => setEditing({ ...editing, image_key: e.target.value })}>{productImageKeys.map((k) => <option key={k}>{k}</option>)}</select></label>
         <label className="text-sm sm:col-span-2">Descrição<input className={input} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} /> Visível na loja</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.is_featured} onChange={(e) => setEditing({ ...editing, is_featured: e.target.checked })} /> Popular</label>
@@ -93,6 +95,7 @@ export function AdminPanel() {
         <div className="min-w-40 flex-1"><strong className="block text-sm">{p.name}{!p.is_active && <span className="ml-2 text-xs text-muted-foreground">(oculto)</span>}</strong><small className="text-muted-foreground">{p.category} · {p.unit_label}</small></div>
         <span className={`rounded-full px-2 py-1 text-xs font-bold ${stockState(p.stock).cls}`}>{stockState(p.stock).label}</span>
         <strong className="w-24 text-right text-sm">{p.price.toLocaleString("pt-MZ")} MZN</strong>
+        <Button size="sm" variant={p.is_active ? "default" : "outline"} onClick={() => void toggleVisible(p)}>{p.is_active ? "Visível" : "Oculto"}</Button>
         <Button size="icon" variant="outline" aria-label="Editar" onClick={() => setEditing(p)}><Pencil /></Button>
         <Button size="icon" variant="outline" aria-label="Remover" onClick={() => void removeProduct(p)}><Trash2 /></Button>
       </div>)}</div>
