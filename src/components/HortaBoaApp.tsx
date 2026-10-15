@@ -144,7 +144,78 @@ function Catalog({ products, allProducts, categories, category, setCategory, que
   </main>;
 }
 
-CART_ORDERS_ACCOUNT
+type Method = "mpesa" | "emola" | "pos" | "cash";
+type Addr = { id: string; label: string; address: string; city: string; is_default: boolean };
+function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<typeof useStore>["lines"]; subtotal: number; change: (id: string, delta: number) => void; remove: (id: string) => void; clear: () => void }) {
+  const navigate = useNavigate();
+  const [method, setMethod] = useState<Method>("mpesa");
+  const [signedIn, setSignedIn] = useState(false);
+  const [addresses, setAddresses] = useState<Addr[]>([]);
+  const [addrId, setAddrId] = useState("");
+  const [manual, setManual] = useState("");
+  const [notes, setNotes] = useState("");
+  const [store, setStore] = useState<{ id: string; fee: number } | null>(null);
+  const [code, setCode] = useState("");
+  const [promo, setPromo] = useState<{ code: string; pct: number } | null>(null);
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void supabase.from("stores").select("id,delivery_fee").eq("is_active", true).order("created_at").limit(1).maybeSingle().then(({ data }) => data && setStore({ id: data.id, fee: Number(data.delivery_fee) }));
+    void supabase.auth.getUser().then(({ data }) => { if (!data.user) return; setSignedIn(true); void supabase.from("user_addresses").select("id,label,address,city,is_default").order("is_default", { ascending: false }).then(({ data: a }) => { setAddresses(a ?? []); if (a?.length) setAddrId(a[0].id); }); });
+  }, []);
+  const fee = store?.fee ?? 150;
+  const discount = promo ? Math.round(subtotal * promo.pct) / 100 : 0;
+  const total = subtotal + fee - discount;
+  const applyPromo = async () => {
+    const c = code.trim().toUpperCase(); if (!c) return;
+    const { data } = await supabase.from("promotions").select("code,discount_percent").eq("code", c).maybeSingle();
+    if (!data) { setPromo(null); setNotice("Código inválido ou expirado."); return; }
+    setPromo({ code: data.code, pct: Number(data.discount_percent) }); setNotice("");
+  };
+  const placeOrder = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) { await navigate({ to: "/auth" }); return; }
+    const chosen = addresses.find((a) => a.id === addrId);
+    const address = chosen ? `${chosen.address}, ${chosen.city}` : manual.trim();
+    if (!address) { setNotice("Indique o endereço de entrega."); return; }
+    const outOfStock = lines.find((l) => l.stock <= 0);
+    if (outOfStock) { setNotice(`${outOfStock.name} está fora de stock.`); return; }
+    setBusy(true);
+    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: store?.id ?? null, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null, promotion_code: promo?.code ?? null }).select("id").single();
+    if (error || !order) { setBusy(false); setNotice("Não foi possível criar a encomenda. Tente novamente."); return; }
+    const { error: itemsError } = await supabase.from("order_items").insert(lines.map((line) => ({ order_id: order.id, product_id: line.id, product_name: line.name, unit_label: line.unitLabel, quantity: line.quantity * line.minQuantity, unit_price: line.price })));
+    setBusy(false);
+    if (itemsError) { setNotice("A encomenda foi criada, mas os itens precisam de confirmação."); return; }
+    clear();
+    await navigate({ to: "/encomendas/$id", params: { id: order.id } });
+  };
+  return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-6xl px-4 pb-28 pt-8 sm:px-6"><PageTitle back="/produtos" title="O seu carrinho" subtitle={`${lines.length} tipos de produtos selecionados`} />{lines.length === 0 ? <Empty icon={ShoppingBasket} title="O seu cesto está vazio" text="Escolha produtos frescos para começar a sua encomenda." action="Ver produtos" to="/produtos" /> : <div className="grid gap-8 lg:grid-cols-[1.35fr_.65fr]"><div className="space-y-3">{lines.map((line) => <article key={line.id} className="flex gap-4 rounded-lg border border-border bg-card p-3"><div className={`product-thumb ${productPositions[line.imageKey] ?? "product-generic"}`} style={productImageStyle(line.imageKey)} /><div className="min-w-0 flex-1"><div className="flex justify-between gap-3"><div><h3 className="font-display text-lg">{line.name}</h3><p className="text-xs text-muted-foreground">{mzn(line.price)} / {line.unitLabel}</p></div><Button variant="ghost" size="icon" onClick={() => remove(line.id)} aria-label="Remover"><Trash2 className="text-destructive" /></Button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center rounded-md border border-input"><Button variant="ghost" size="icon" onClick={() => change(line.id, -1)} aria-label="Menos"><Minus /></Button><span className="w-8 text-center text-sm font-bold">{line.quantity}</span><Button variant="ghost" size="icon" onClick={() => change(line.id, 1)} aria-label="Mais"><Plus /></Button></div><strong>{mzn(line.price * line.minQuantity * line.quantity)}</strong></div></div></article>)}</div>
+  <aside className="h-fit rounded-lg border border-border bg-card p-5 shadow-sm">
+    <h2 className="font-display text-2xl">Resumo</h2>
+    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Entrega</span><span>{mzn(fee)}</span></div>{promo && <div className="flex justify-between text-primary"><span>Desconto {promo.code} ({promo.pct}%)</span><span>−{mzn(discount)}</span></div>}<div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
+    <div className="mt-4 flex gap-2"><input className={fieldCls} placeholder="Código promocional" value={code} onChange={(e) => setCode(e.target.value)} /><Button variant="outline" onClick={() => void applyPromo()}><Tag /> Aplicar</Button></div>
+    <h3 className="mt-6 text-sm font-bold">Endereço de entrega</h3>
+    {signedIn && addresses.length > 0 ? <select className={`${fieldCls} mt-2`} value={addrId} onChange={(e) => setAddrId(e.target.value)}>{addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {a.address}</option>)}<option value="">Outro endereço…</option></select> : null}
+    {(!addrId || addresses.length === 0) && <input className={`${fieldCls} mt-2`} placeholder="Bairro, rua, número, referência" value={manual} onChange={(e) => setManual(e.target.value)} />}
+    {signedIn && <Link to="/conta/enderecos" className="mt-1 inline-block text-xs font-semibold text-primary">Gerir endereços</Link>}
+    <textarea className="mt-3 w-full rounded-md border border-input bg-background p-3 text-sm" rows={2} placeholder="Nota para o operador (opcional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+    <h3 className="mt-4 text-sm font-bold">Método de pagamento</h3>
+    <div className="mt-2 grid grid-cols-2 gap-2">{([["mpesa", "M-Pesa"], ["emola", "e-Mola"], ["pos", "POS"], ["cash", "Dinheiro"]] as const).map(([value, label]) => <button key={value} onClick={() => setMethod(value)} className={`rounded-md border p-3 text-sm font-semibold transition ${method === value ? "border-primary bg-leaf-soft text-primary" : "border-border bg-background"}`}>{label}</button>)}</div>
+    {notice && <p className="mt-3 text-sm text-destructive">{notice}</p>}
+    <Button size="lg" className="mt-5 w-full" disabled={busy} onClick={() => void placeOrder()}>{busy ? "A enviar…" : signedIn ? "Finalizar encomenda" : "Entrar para finalizar"} <ChevronRight /></Button>
+  </aside></div>}</main>;
+}
+
+function Orders({ orders, signedIn }: { orders: Order[]; signedIn: boolean }) { return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-5xl px-4 pb-28 pt-8 sm:px-6"><PageTitle title="Minhas encomendas" subtitle="Acompanhe cada compra, da preparação à entrega." />{!signedIn ? <Empty icon={CircleUserRound} title="Entre na sua conta" text="Inicie sessão para consultar as suas encomendas." action="Entrar" to="/auth" /> : orders.length === 0 ? <Empty icon={Package} title="Ainda não há encomendas" text="A sua próxima cesta fresca começa no catálogo." action="Comprar agora" to="/produtos" /> : <div className="space-y-4">{orders.map((order) => <Link key={order.id} to="/encomendas/$id" params={{ id: order.id }} className="block rounded-lg border border-border bg-card p-5 transition hover:border-primary"><div className="flex flex-wrap items-start justify-between gap-3"><div><span className="text-xs text-muted-foreground">Encomenda #{order.order_number}</span><h2 className="mt-1 font-display text-xl">{statusLabel[order.status] ?? order.status}</h2></div><span className="rounded-full bg-leaf-soft px-3 py-1 text-xs font-bold text-primary">{order.payment_status === "paid" ? "Pago" : "Pagamento pendente"}</span></div><div className="mt-5 grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-3"><span><Clock3 className="mr-2 inline h-4 w-4 text-muted-foreground" />{new Date(order.created_at).toLocaleDateString("pt-MZ")}</span><span className="truncate"><MapPin className="mr-2 inline h-4 w-4 text-muted-foreground" />{order.delivery_address}</span><strong className="sm:text-right">{mzn(order.total)}</strong></div></Link>)}</div>}</main>; }
+
+type AccountLink = "/conta/perfil" | "/conta/enderecos" | "/conta/notificacoes" | "/definicoes" | "/ajuda" | "/termos" | "/privacidade" | "/admin" | "/operador" | "/encomendas";
+function Account({ email, role, signOut }: { email: string | null; role: AppRole | null; signOut: () => void }) {
+  const cards: Array<[typeof MapPin, string, string, AccountLink]> = [[CircleUserRound, "Perfil", "Nome, telefone e NUIT", "/conta/perfil"], [MapPin, "Endereços", "Gerir locais de entrega", "/conta/enderecos"], [Bell, "Notificações", "Atualizações das encomendas", "/conta/notificacoes"], [Package, "Encomendas", "Histórico e estado", "/encomendas"], [Settings, "Definições", "Palavra-passe e preferências", "/definicoes"], [Heart, "Ajuda", "Fale com a Horta Boa", "/ajuda"]];
+  if (role === "operator" || role === "admin") cards.unshift([Truck, "Painel do operador", "Encomendas para entregar", "/operador"]);
+  if (role === "admin") cards.unshift([BarChart3, "Gestão da loja", "Produtos, stock, vendas e utilizadores", "/admin"]);
+  return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-4xl px-4 pb-28 pt-8 sm:px-6"><PageTitle title="A sua conta" subtitle="Tudo o que precisa para gerir as suas compras." />{!email ? <Empty icon={CircleUserRound} title="Bem-vindo à Horta Boa" text="Entre ou crie uma conta para guardar endereços e acompanhar encomendas." action="Entrar ou registar" to="/auth" /> : <><section className="mb-6 flex items-center gap-4 rounded-lg bg-primary p-5 text-primary-foreground"><div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-foreground/15"><CircleUserRound /></div><div className="min-w-0"><span className="text-xs uppercase tracking-[.12em] text-primary-foreground/70">{role === "admin" ? "Administrador" : role === "operator" ? "Operador" : "Cliente Horta Boa"}</span><p className="truncate font-semibold">{email}</p></div></section><div className="grid gap-3 sm:grid-cols-2">{cards.map(([Icon, title, text, to]) => <Link key={title} to={to} className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 text-left hover:border-primary"><span className="flex h-10 w-10 items-center justify-center rounded-md bg-leaf-soft text-primary"><Icon /></span><span className="flex-1"><strong className="block">{title}</strong><small className="text-muted-foreground">{text}</small></span><ChevronRight className="h-4 w-4 text-muted-foreground" /></Link>)}</div><Button variant="outline" className="mt-6" onClick={() => void signOut()}><LogOut /> Terminar sessão</Button></>}<p className="mt-8 flex gap-4 text-xs text-muted-foreground"><Link to="/termos" className="hover:text-primary">Termos</Link><Link to="/privacidade" className="hover:text-primary">Privacidade</Link><Link to="/ajuda" className="hover:text-primary">Ajuda</Link></p></main>;
+}
+
 
 function NavItem({ to, icon: Icon, label }: { to: "/" | "/produtos" | "/encomendas" | "/conta" | "/carrinho"; icon: typeof Home; label: string }) { return <Link to={to} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-accent hover:text-foreground" activeProps={{ className: "bg-leaf-soft text-primary" }}><Icon className="h-4 w-4" />{label}</Link>; }
 function MobileNav({ count }: { count: number }) { return <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-border bg-background/95 px-1 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"><MobileLink to="/" icon={Home} label="Início" /><MobileLink to="/produtos" icon={Sprout} label="Produtos" /><MobileLink to="/carrinho" icon={ShoppingCart} label="Cesto" badge={count} /><MobileLink to="/encomendas" icon={Package} label="Pedidos" /><MobileLink to="/conta" icon={CircleUserRound} label="Conta" /></nav>; }
