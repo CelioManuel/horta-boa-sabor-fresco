@@ -161,7 +161,7 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     void supabase.from("stores").select("id,delivery_fee").eq("is_active", true).order("created_at").limit(1).maybeSingle().then(({ data }) => data && setStore({ id: data.id, fee: Number(data.delivery_fee) }));
-    void supabase.auth.getUser().then(({ data }) => { if (!data.user) return; setSignedIn(true); void supabase.from("user_addresses").select("id,label,address,city,is_default").order("is_default", { ascending: false }).then(({ data: a }) => { setAddresses(a ?? []); if (a?.length) setAddrId(a[0].id); }); });
+    void supabase.auth.getUser().then(({ data }) => { if (!data.user) return; setSignedIn(true); void supabase.from("user_addresses").select("id,label,address,city,is_default").order("is_default", { ascending: false }).then(({ data: a }) => { setAddresses(a ?? []); if (a?.[0]) setAddrId(a[0].id); }); });
   }, []);
   const fee = store?.fee ?? 150;
   const discount = promo ? Math.round(subtotal * promo.pct) / 100 : 0;

@@ -24,8 +24,8 @@ export function AdminDashboard() {
   const valid = orders.filter((o) => o.status !== "cancelled");
   const revenue = valid.reduce((s, o) => s + o.total, 0);
   const paid = valid.filter((o) => o.payment_status === "paid").reduce((s, o) => s + o.total, 0);
-  const byStatus = Object.keys(statusLabel).map((k) => [statusLabel[k], orders.filter((o) => o.status === k).length] as const);
-  const byPay = Object.keys(paymentLabel).map((k) => [paymentLabel[k], valid.filter((o) => o.payment_method === k).reduce((s, o) => s + o.total, 0)] as const);
+  const byStatus = Object.keys(statusLabel).map((k) => [statusLabel[k] ?? k, orders.filter((o) => o.status === k).length] as const);
+  const byPay = Object.keys(paymentLabel).map((k) => [paymentLabel[k] ?? k, valid.filter((o) => o.payment_method === k).reduce((s, o) => s + o.total, 0)] as const);
   const exportCsv = () => {
     const rows = [["data", "estado", "pagamento", "metodo", "total"], ...orders.map((o) => [o.created_at, statusLabel[o.status], o.payment_status, paymentLabel[o.payment_method], String(o.total)])];
     const blob = new Blob([rows.map((r) => r.join(";")).join("\n")], { type: "text/csv" });
@@ -37,7 +37,7 @@ export function AdminDashboard() {
     <div className="grid gap-4 lg:grid-cols-3">
       <Card title="Por estado">{byStatus.map(([l, v]) => <Bar key={l} label={l} value={v} max={Math.max(1, ...byStatus.map((x) => x[1]))} text={String(v)} />)}</Card>
       <Card title="Por pagamento">{byPay.map(([l, v]) => <Bar key={l} label={l} value={v} max={Math.max(1, ...byPay.map((x) => x[1]))} text={mzn(v)} />)}</Card>
-      <Card title="Produtos mais vendidos">{top.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas neste período.</p> : top.map(([n, q, v]) => <Bar key={n} label={`${n} (${q})`} value={v} max={top[0][2]} text={mzn(v)} />)}</Card>
+      <Card title="Produtos mais vendidos">{top.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas neste período.</p> : top.map(([n, q, v]) => <Bar key={n} label={`${n} (${q})`} value={v} max={top[0]?.[2] ?? 1} text={mzn(v)} />)}</Card>
     </div>
   </section>;
 }

@@ -6,7 +6,7 @@ import { Empty, Page, PageTitle, StatusTimeline, mzn, paymentLabel, statusFlow, 
 
 type O = { id: string; order_number: number; status: string; payment_status: string; payment_method: string; delivery_address: string; total: number; notes: string | null; created_at: string };
 type Item = { order_id: string; product_name: string; unit_label: string; quantity: number };
-type Stock = { product_id: string; name: string; unit_label: string; quantity: number; rowId?: string };
+type Stock = { product_id: string; name: string; unit_label: string; quantity: number; rowId?: string | undefined };
 
 export function OperatorPanel({ isAdmin }: { isAdmin: boolean }) {
   const [tab, setTab] = useState<"active" | "done" | "stock">("active");
