@@ -15,6 +15,13 @@
       "when": 1792052340146,
       "tag": "0001_products_sku",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792053072363,
+      "tag": "0002_frontend_completion",
+      "breakpoints": true
     }
   ]
 }

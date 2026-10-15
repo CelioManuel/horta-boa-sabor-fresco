@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Package, Pencil, Plus, Save, Sprout, Trash2, Users, X } from "lucide-react";
+import { BarChart3, Search, Store, Tag, Package, Pencil, Plus, Save, Sprout, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { productImageKeys } from "@/lib/product-images";
+import { AdminDashboard, PromotionsAdmin, StoresAdmin } from "@/components/pages/AdminExtras";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
 type Role = "admin" | "operator" | "customer";
-type Product = { id: string; name: string; category: string; price: number; unit_label: string; min_quantity: number; stock: number; image_key: string; description: string; is_active: boolean; is_featured: boolean };
+type Product = { id: string; sku?: string | null; name: string; category: string; price: number; unit_label: string; min_quantity: number; stock: number; image_key: string; description: string; is_active: boolean; is_featured: boolean };
 type Person = { id: string; full_name: string; phone: string; roles: Role[] };
 type Order = { id: string; order_number: number; status: string; total: number; payment_status: string; operator_id: string | null; created_at: string };
 
@@ -20,12 +22,14 @@ export function stockState(stock: number) {
 }
 
 export function AdminPanel() {
-  const [tab, setTab] = useState<"products" | "stock" | "users" | "orders">("products");
+  const [tab, setTab] = useState<"dashboard" | "products" | "stock" | "users" | "orders" | "stores" | "promos">("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [editing, setEditing] = useState<(Omit<Product, "id"> & { id?: string }) | null>(null);
   const [msg, setMsg] = useState("");
+  const [search, setSearch] = useState("");
+  const [onlyVisible, setOnlyVisible] = useState<"all" | "on" | "off">("all");
 
   const loadProducts = async () => { const { data } = await supabase.from("products").select("*").order("name"); setProducts((data ?? []).map((p) => ({ ...p, price: Number(p.price), stock: Number(p.stock), min_quantity: Number(p.min_quantity) }))); };
   const loadPeople = async () => {
@@ -62,10 +66,11 @@ export function AdminPanel() {
     if (error) flash("Erro: " + error.message); void loadOrders();
   };
 
+  const filtered = products.filter((p) => (onlyVisible === "all" || p.is_active === (onlyVisible === "on")) && `${p.name} ${p.sku ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const operators = people.filter((p) => p.roles.includes("operator"));
   const inStock = products.filter((p) => p.stock > 0);
   const out = products.filter((p) => p.stock <= 0);
-  const tabs: Array<[typeof tab, string, typeof Sprout]> = [["products", "Produtos", Sprout], ["stock", "Stock", Package], ["users", "Utilizadores e operadores", Users], ["orders", "Encomendas", Package]];
+  const tabs: Array<[typeof tab, string, typeof Sprout]> = [["dashboard", "Painel e relatórios", BarChart3], ["products", "Produtos", Sprout], ["stock", "Stock", Package], ["users", "Utilizadores e operadores", Users], ["orders", "Encomendas", Package], ["stores", "Lojas e entregas", Store], ["promos", "Promoções", Tag]];
   const input = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
 
   return <main className="mx-auto max-w-7xl px-4 pb-28 pt-8 sm:px-6">
@@ -77,6 +82,9 @@ export function AdminPanel() {
     <div className="hide-scrollbar mt-6 flex gap-2 overflow-x-auto">{tabs.map(([k, l, I]) => <Button key={k} size="sm" variant={tab === k ? "default" : "outline"} onClick={() => setTab(k)}><I />{l}</Button>)}</div>
     {msg && <p className="mt-4 rounded-md bg-leaf-soft px-3 py-2 text-sm text-primary">{msg}</p>}
 
+    {tab === "dashboard" && <AdminDashboard />}
+    {tab === "stores" && <StoresAdmin />}
+    {tab === "promos" && <PromotionsAdmin />}
     {tab === "products" && <section className="mt-5">
       <Button onClick={() => setEditing({ ...emptyProduct })}><Plus /> Novo produto</Button>
       {editing && <div className="mt-4 grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
@@ -91,8 +99,9 @@ export function AdminPanel() {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.is_featured} onChange={(e) => setEditing({ ...editing, is_featured: e.target.checked })} /> Popular</label>
         <div className="flex gap-2 sm:col-span-2"><Button onClick={() => void saveProduct()}><Save /> Guardar</Button><Button variant="outline" onClick={() => setEditing(null)}><X /> Cancelar</Button></div>
       </div>}
-      <div className="mt-4 overflow-hidden rounded-lg border border-border bg-card">{products.map((p) => <div key={p.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">
-        <div className="min-w-40 flex-1"><strong className="block text-sm">{p.name}{!p.is_active && <span className="ml-2 text-xs text-muted-foreground">(oculto)</span>}</strong><small className="text-muted-foreground">{p.category} · {p.unit_label}</small></div>
+      <div className="mt-4 flex flex-wrap gap-2"><label className="flex h-10 flex-1 items-center gap-2 rounded-md border border-input bg-card px-3"><Search className="h-4 w-4 text-muted-foreground" /><input className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Pesquisar por nome ou código" value={search} onChange={(e) => setSearch(e.target.value)} /></label>{([["all", "Todos"], ["on", "Visíveis"], ["off", "Ocultos"]] as const).map(([k, l]) => <Button key={k} size="sm" variant={onlyVisible === k ? "default" : "outline"} onClick={() => setOnlyVisible(k)}>{l}</Button>)}</div>
+      <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">{filtered.map((p) => <div key={p.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">
+        <div className="min-w-40 flex-1"><strong className="block text-sm">{p.name}{!p.is_active && <span className="ml-2 text-xs text-muted-foreground">(oculto)</span>}</strong><small className="text-muted-foreground">{p.sku ? `${p.sku} · ` : ""}{p.category} · {p.unit_label}</small></div>
         <span className={`rounded-full px-2 py-1 text-xs font-bold ${stockState(p.stock).cls}`}>{stockState(p.stock).label}</span>
         <strong className="w-24 text-right text-sm">{p.price.toLocaleString("pt-MZ")} MZN</strong>
         <Button size="sm" variant={p.is_active ? "default" : "outline"} onClick={() => void toggleVisible(p)}>{p.is_active ? "Visível" : "Oculto"}</Button>
@@ -111,7 +120,7 @@ export function AdminPanel() {
     </div>)}</section>}
 
     {tab === "orders" && <section className="mt-5 overflow-hidden rounded-lg border border-border bg-card">{orders.length === 0 && <p className="p-4 text-sm text-muted-foreground">Ainda não há encomendas.</p>}{orders.map((o) => <div key={o.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">
-      <div className="min-w-32 flex-1"><strong className="block text-sm">#{o.order_number}</strong><small className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString("pt-MZ")} · {o.total.toLocaleString("pt-MZ")} MZN</small></div>
+      <div className="min-w-32 flex-1"><Link to="/encomendas/$id" params={{ id: o.id }} className="block text-sm font-bold underline-offset-2 hover:underline">#{o.order_number}</Link><small className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString("pt-MZ")} · {o.total.toLocaleString("pt-MZ")} MZN</small></div>
       <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={o.status} onChange={(e) => void updateOrder(o.id, { status: e.target.value })}>{statuses.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={o.operator_id ?? ""} onChange={(e) => void updateOrder(o.id, { operator_id: e.target.value || null })}><option value="">Sem operador</option>{operators.map((p) => <option key={p.id} value={p.id}>{p.full_name || p.id.slice(0, 8)}</option>)}</select>
       <Button size="sm" variant={o.payment_status === "paid" ? "default" : "outline"} onClick={() => void updateOrder(o.id, { payment_status: o.payment_status === "paid" ? "pending" : "paid" })}>{o.payment_status === "paid" ? "Pago" : "Marcar pago"}</Button>

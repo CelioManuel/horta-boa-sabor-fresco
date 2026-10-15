@@ -11,12 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AjudaRouteImport } from './routes/ajuda'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
 import { Route as ContaRouteImport } from './routes/conta'
+import { Route as DefinicoesRouteImport } from './routes/definicoes'
 import { Route as EncomendasRouteImport } from './routes/encomendas'
 import { Route as OperadorRouteImport } from './routes/operador'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ProdutosRouteImport } from './routes/produtos'
+import { Route as TermosRouteImport } from './routes/termos'
+import { Route as ContaEnderecosRouteImport } from './routes/conta_.enderecos'
+import { Route as ContaNotificacoesRouteImport } from './routes/conta_.notificacoes'
+import { Route as ContaPerfilRouteImport } from './routes/conta_.perfil'
+import { Route as EncomendasIdRouteImport } from './routes/encomendas_.$id'
+import { Route as ProdutosIdRouteImport } from './routes/produtos_.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -26,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AjudaRoute = AjudaRouteImport.update({
+  id: '/ajuda',
+  path: '/ajuda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -43,6 +57,11 @@ const ContaRoute = ContaRouteImport.update({
   path: '/conta',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DefinicoesRoute = DefinicoesRouteImport.update({
+  id: '/definicoes',
+  path: '/definicoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EncomendasRoute = EncomendasRouteImport.update({
   id: '/encomendas',
   path: '/encomendas',
@@ -53,85 +72,183 @@ const OperadorRoute = OperadorRouteImport.update({
   path: '/operador',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutosRoute = ProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContaEnderecosRoute = ContaEnderecosRouteImport.update({
+  id: '/conta_/enderecos',
+  path: '/conta/enderecos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContaNotificacoesRoute = ContaNotificacoesRouteImport.update({
+  id: '/conta_/notificacoes',
+  path: '/conta/notificacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContaPerfilRoute = ContaPerfilRouteImport.update({
+  id: '/conta_/perfil',
+  path: '/conta/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EncomendasIdRoute = EncomendasIdRouteImport.update({
+  id: '/encomendas_/$id',
+  path: '/encomendas/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosIdRoute = ProdutosIdRouteImport.update({
+  id: '/produtos_/$id',
+  path: '/produtos/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/ajuda': typeof AjudaRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/conta': typeof ContaRoute
+  '/definicoes': typeof DefinicoesRoute
   '/encomendas': typeof EncomendasRoute
   '/operador': typeof OperadorRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/produtos': typeof ProdutosRoute
+  '/termos': typeof TermosRoute
+  '/conta/enderecos': typeof ContaEnderecosRoute
+  '/conta/notificacoes': typeof ContaNotificacoesRoute
+  '/conta/perfil': typeof ContaPerfilRoute
+  '/encomendas/$id': typeof EncomendasIdRoute
+  '/produtos/$id': typeof ProdutosIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/ajuda': typeof AjudaRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/conta': typeof ContaRoute
+  '/definicoes': typeof DefinicoesRoute
   '/encomendas': typeof EncomendasRoute
   '/operador': typeof OperadorRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/produtos': typeof ProdutosRoute
+  '/termos': typeof TermosRoute
+  '/conta/enderecos': typeof ContaEnderecosRoute
+  '/conta/notificacoes': typeof ContaNotificacoesRoute
+  '/conta/perfil': typeof ContaPerfilRoute
+  '/encomendas/$id': typeof EncomendasIdRoute
+  '/produtos/$id': typeof ProdutosIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/ajuda': typeof AjudaRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/conta': typeof ContaRoute
+  '/definicoes': typeof DefinicoesRoute
   '/encomendas': typeof EncomendasRoute
   '/operador': typeof OperadorRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/produtos': typeof ProdutosRoute
+  '/termos': typeof TermosRoute
+  '/conta_/enderecos': typeof ContaEnderecosRoute
+  '/conta_/notificacoes': typeof ContaNotificacoesRoute
+  '/conta_/perfil': typeof ContaPerfilRoute
+  '/encomendas_/$id': typeof EncomendasIdRoute
+  '/produtos_/$id': typeof ProdutosIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
+    | '/ajuda'
     | '/auth'
     | '/carrinho'
     | '/conta'
+    | '/definicoes'
     | '/encomendas'
     | '/operador'
+    | '/privacidade'
     | '/produtos'
+    | '/termos'
+    | '/conta/enderecos'
+    | '/conta/notificacoes'
+    | '/conta/perfil'
+    | '/encomendas/$id'
+    | '/produtos/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
+    | '/ajuda'
     | '/auth'
     | '/carrinho'
     | '/conta'
+    | '/definicoes'
     | '/encomendas'
     | '/operador'
+    | '/privacidade'
     | '/produtos'
+    | '/termos'
+    | '/conta/enderecos'
+    | '/conta/notificacoes'
+    | '/conta/perfil'
+    | '/encomendas/$id'
+    | '/produtos/$id'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/ajuda'
     | '/auth'
     | '/carrinho'
     | '/conta'
+    | '/definicoes'
     | '/encomendas'
     | '/operador'
+    | '/privacidade'
     | '/produtos'
+    | '/termos'
+    | '/conta_/enderecos'
+    | '/conta_/notificacoes'
+    | '/conta_/perfil'
+    | '/encomendas_/$id'
+    | '/produtos_/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AjudaRoute: typeof AjudaRoute
   AuthRoute: typeof AuthRoute
   CarrinhoRoute: typeof CarrinhoRoute
   ContaRoute: typeof ContaRoute
+  DefinicoesRoute: typeof DefinicoesRoute
   EncomendasRoute: typeof EncomendasRoute
   OperadorRoute: typeof OperadorRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   ProdutosRoute: typeof ProdutosRoute
+  TermosRoute: typeof TermosRoute
+  ContaEnderecosRoute: typeof ContaEnderecosRoute
+  ContaNotificacoesRoute: typeof ContaNotificacoesRoute
+  ContaPerfilRoute: typeof ContaPerfilRoute
+  EncomendasIdRoute: typeof EncomendasIdRoute
+  ProdutosIdRoute: typeof ProdutosIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ajuda': {
+      id: '/ajuda'
+      path: '/ajuda'
+      fullPath: '/ajuda'
+      preLoaderRoute: typeof AjudaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -171,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/definicoes': {
+      id: '/definicoes'
+      path: '/definicoes'
+      fullPath: '/definicoes'
+      preLoaderRoute: typeof DefinicoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/encomendas': {
       id: '/encomendas'
       path: '/encomendas'
@@ -185,11 +316,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperadorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produtos': {
       id: '/produtos'
       path: '/produtos'
       fullPath: '/produtos'
       preLoaderRoute: typeof ProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conta_/enderecos': {
+      id: '/conta_/enderecos'
+      path: '/conta/enderecos'
+      fullPath: '/conta/enderecos'
+      preLoaderRoute: typeof ContaEnderecosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conta_/notificacoes': {
+      id: '/conta_/notificacoes'
+      path: '/conta/notificacoes'
+      fullPath: '/conta/notificacoes'
+      preLoaderRoute: typeof ContaNotificacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conta_/perfil': {
+      id: '/conta_/perfil'
+      path: '/conta/perfil'
+      fullPath: '/conta/perfil'
+      preLoaderRoute: typeof ContaPerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/encomendas_/$id': {
+      id: '/encomendas_/$id'
+      path: '/encomendas/$id'
+      fullPath: '/encomendas/$id'
+      preLoaderRoute: typeof EncomendasIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos_/$id': {
+      id: '/produtos_/$id'
+      path: '/produtos/$id'
+      fullPath: '/produtos/$id'
+      preLoaderRoute: typeof ProdutosIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -198,12 +378,21 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AjudaRoute: AjudaRoute,
   AuthRoute: AuthRoute,
   CarrinhoRoute: CarrinhoRoute,
   ContaRoute: ContaRoute,
+  DefinicoesRoute: DefinicoesRoute,
   EncomendasRoute: EncomendasRoute,
   OperadorRoute: OperadorRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   ProdutosRoute: ProdutosRoute,
+  TermosRoute: TermosRoute,
+  ContaEnderecosRoute: ContaEnderecosRoute,
+  ContaNotificacoesRoute: ContaNotificacoesRoute,
+  ContaPerfilRoute: ContaPerfilRoute,
+  EncomendasIdRoute: EncomendasIdRoute,
+  ProdutosIdRoute: ProdutosIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
