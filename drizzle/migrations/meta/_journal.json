@@ -8,6 +8,13 @@
       "when": 1791960767356,
       "tag": "0000_admin_manage_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792052340146,
+      "tag": "0001_products_sku",
+      "breakpoints": true
     }
   ]
 }
