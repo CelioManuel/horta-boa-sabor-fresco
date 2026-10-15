@@ -71,7 +71,6 @@ export function OrderDetail({ id }: { id: string }) {
   useEffect(load, [id]);
   if (o === undefined) return <Page><Loading /></Page>;
   if (!o) return <Page><Empty title="Encomenda não encontrada" text="Verifique se tem sessão iniciada com a conta certa." action="Minhas encomendas" to="/encomendas" /></Page>;
-  const cancel = async () => { if (!confirm("Cancelar esta encomenda?")) return; await supabase.from("orders").update({ status: "cancelled" }).eq("id", id); load(); };
   return <Page>
     <PageTitle back="/encomendas" title={`Encomenda #${o.order_number}`} subtitle={new Date(o.created_at).toLocaleString("pt-MZ")} />
     <section className="rounded-lg border border-border bg-card p-5"><h2 className="mb-4 font-display text-xl">{statusLabel[o.status]}</h2><StatusTimeline status={o.status} /></section>
@@ -79,7 +78,6 @@ export function OrderDetail({ id }: { id: string }) {
       <div className="mt-4 space-y-1 border-t border-border pt-3 text-sm"><Row l="Produtos" v={mzn(o.subtotal)} /><Row l="Entrega" v={mzn(o.delivery_fee)} />{o.discount > 0 && <Row l={`Desconto${o.promotion_code ? ` (${o.promotion_code})` : ""}`} v={`−${mzn(o.discount)}`} />}<div className="flex justify-between pt-2 text-lg font-bold"><span>Total</span><span>{mzn(o.total)}</span></div></div></section>
     <section className="mt-4 grid gap-4 sm:grid-cols-2"><div className="rounded-lg border border-border bg-card p-5 text-sm"><strong className="block">Entrega</strong><p className="mt-1 text-muted-foreground"><MapPin className="mr-1 inline h-4 w-4" />{o.delivery_address}</p>{o.notes && <p className="mt-2 text-muted-foreground">Nota: {o.notes}</p>}</div><div className="rounded-lg border border-border bg-card p-5 text-sm"><strong className="block">Pagamento</strong><p className="mt-1 text-muted-foreground">{paymentLabel[o.payment_method]} · {o.payment_status === "paid" ? "Pago" : "Pendente"}</p></div></section>
   </Page>;
-  void cancel;
 }
 const Row = ({ l, v }: { l: string; v: string }) => <div className="flex justify-between"><span className="text-muted-foreground">{l}</span><span>{v}</span></div>;
 
