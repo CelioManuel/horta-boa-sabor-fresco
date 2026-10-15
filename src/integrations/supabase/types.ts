@@ -144,6 +144,7 @@ export type Database = {
           order_number: number
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_status: Database["public"]["Enums"]["payment_status"]
+          promotion_code: string | null
           status: Database["public"]["Enums"]["order_status"]
           store_id: string | null
           subtotal: number
@@ -162,6 +163,7 @@ export type Database = {
           order_number?: number
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          promotion_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: string | null
           subtotal: number
@@ -180,6 +182,7 @@ export type Database = {
           order_number?: number
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          promotion_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           store_id?: string | null
           subtotal?: number
@@ -315,6 +318,7 @@ export type Database = {
         Row: {
           address: string
           created_at: string
+          delivery_fee: number
           delivery_radius_km: number
           id: string
           is_active: boolean
@@ -325,6 +329,7 @@ export type Database = {
         Insert: {
           address: string
           created_at?: string
+          delivery_fee?: number
           delivery_radius_km?: number
           id?: string
           is_active?: boolean
@@ -335,6 +340,7 @@ export type Database = {
         Update: {
           address?: string
           created_at?: string
+          delivery_fee?: number
           delivery_radius_km?: number
           id?: string
           is_active?: boolean
