@@ -8,8 +8,8 @@
 - [x] Verify the live preview on desktop and mobile
 - [x] Import the client's 146-item catalogue (hidden by default) with photos
 - [x] Complete customer, operator, admin and support pages
-- [ ] Make all new deliveries free and verify totals
-- [ ] Add mobile registration, SMS confirmation and password login
-- [ ] Prepare a Docker server installation package and database migration instructions
+- [x] Make all new deliveries free and verify totals
+- [x] Add mobile registration, SMS confirmation and password login (UI and validation tested; real SMS blocked below)
+- [x] Prepare a Docker server installation package and database migration instructions (installation and restore require the destination server)
 - [ ] Activate and verify SMS delivery (requires Twilio settings)
 - [ ] Connect hortaboa.co.mz (requires hosting destination and DNS setup)
