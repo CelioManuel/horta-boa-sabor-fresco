@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { expect, test } from "bun:test";
 import { normalizePhone } from "./phone";
 test("normalizes Mozambique local numbers", () => {
