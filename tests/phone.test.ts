@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { expect, test } from "bun:test";
-import { normalizePhone } from "./phone";
+import { normalizePhone } from "../src/lib/phone";
 test("normalizes Mozambique local numbers", () => {
   expect(normalizePhone("84 123 4567")).toBe("+258841234567");
 });

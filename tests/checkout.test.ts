@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
-import { checkoutTotals } from "./checkout";
+import { checkoutTotals } from "../src/lib/checkout";
 
 describe("free delivery", () => {
   test("charges zero delivery on a 600 MZN order", () => {
