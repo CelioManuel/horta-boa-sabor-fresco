@@ -1,3 +1,4 @@
+import { checkoutTotals } from "@/lib/checkout";
 import { productImageStyle } from "@/lib/product-images";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -50,7 +51,7 @@ export function HortaBoaApp({ view, children }: { view: View; children?: React.R
       if (data?.length) setProducts(data.map((item) => ({ ...item, price: Number(item.price), min_quantity: Number(item.min_quantity), stock: Number(item.stock) })));
     });
     void supabase.auth.getUser().then(async ({ data }) => {
-      setUserEmail(data.user?.email ?? null);
+      setUserEmail(data.user?.email || data.user?.phone || null);
       if (data.user) {
         const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
         const roles = (roleRows ?? []).map((row) => row.role as AppRole);
@@ -132,7 +133,7 @@ function Catalog({ products, allProducts, categories, category, setCategory, que
       <img src={heroImage} alt="Cesto com hortícolas frescos numa machamba" className="absolute inset-0 h-full w-full object-cover" width={1600} height={912} />
       <div className="absolute inset-0 bg-hero-overlay" />
       <div className="relative mx-auto flex min-h-[520px] max-w-7xl items-end px-5 pb-12 pt-24 sm:min-h-[590px] sm:px-8 sm:pb-16">
-        <div className="max-w-xl"><span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-foreground/30 bg-primary/80 px-3 py-1.5 text-xs font-bold uppercase tracking-[.14em]"><Leaf className="h-3.5 w-3.5" /> Da machamba para si</span><h1 className="font-display text-5xl leading-[.95] sm:text-7xl">Fresco. Local.<br />Todos os dias.</h1><p className="mt-5 max-w-lg text-base leading-7 text-primary-foreground/85 sm:text-lg">Os melhores hortícolas, selecionados com cuidado e entregues à sua porta em Maputo.</p><div className="mt-7 flex flex-wrap gap-3"><Button size="lg" variant="harvest" asChild><a href="#catalogo">Comprar agora <ChevronRight /></a></Button><span className="flex items-center gap-2 text-sm font-semibold"><Truck className="h-5 w-5 text-harvest" /> Entrega desde 150 MZN</span></div></div>
+        <div className="max-w-xl"><span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-foreground/30 bg-primary/80 px-3 py-1.5 text-xs font-bold uppercase tracking-[.14em]"><Leaf className="h-3.5 w-3.5" /> Da machamba para si</span><h1 className="font-display text-5xl leading-[.95] sm:text-7xl">Fresco. Local.<br />Todos os dias.</h1><p className="mt-5 max-w-lg text-base leading-7 text-primary-foreground/85 sm:text-lg">Os melhores hortícolas, selecionados com cuidado e entregues à sua porta em Maputo.</p><div className="mt-7 flex flex-wrap gap-3"><Button size="lg" variant="harvest" asChild><a href="#catalogo">Comprar agora <ChevronRight /></a></Button><span className="flex items-center gap-2 text-sm font-semibold"><Truck className="h-5 w-5 text-harvest" /> Entrega gratuita</span></div></div>
       </div>
     </section>
     <section id="catalogo" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
@@ -163,9 +164,7 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
     void supabase.from("stores").select("id,delivery_fee").eq("is_active", true).order("created_at").limit(1).maybeSingle().then(({ data }) => data && setStore({ id: data.id, fee: Number(data.delivery_fee) }));
     void supabase.auth.getUser().then(({ data }) => { if (!data.user) return; setSignedIn(true); void supabase.from("user_addresses").select("id,label,address,city,is_default").order("is_default", { ascending: false }).then(({ data: a }) => { setAddresses(a ?? []); if (a?.[0]) setAddrId(a[0].id); }); });
   }, []);
-  const fee = store?.fee ?? 150;
-  const discount = promo ? Math.round(subtotal * promo.pct) / 100 : 0;
-  const total = subtotal + fee - discount;
+  const { deliveryFee: fee, discount, total } = checkoutTotals(subtotal, promo?.pct);
   const applyPromo = async () => {
     const c = code.trim().toUpperCase(); if (!c) return;
     const { data } = await supabase.from("promotions").select("code,discount_percent").eq("code", c).maybeSingle();
@@ -192,7 +191,7 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-6xl px-4 pb-28 pt-8 sm:px-6"><PageTitle back="/produtos" title="O seu carrinho" subtitle={`${lines.length} tipos de produtos selecionados`} />{lines.length === 0 ? <Empty icon={ShoppingBasket} title="O seu cesto está vazio" text="Escolha produtos frescos para começar a sua encomenda." action="Ver produtos" to="/produtos" /> : <div className="grid gap-8 lg:grid-cols-[1.35fr_.65fr]"><div className="space-y-3">{lines.map((line) => <article key={line.id} className="flex gap-4 rounded-lg border border-border bg-card p-3"><div className={`product-thumb ${productPositions[line.imageKey] ?? "product-generic"}`} style={productImageStyle(line.imageKey)} /><div className="min-w-0 flex-1"><div className="flex justify-between gap-3"><div><h3 className="font-display text-lg">{line.name}</h3><p className="text-xs text-muted-foreground">{mzn(line.price)} / {line.unitLabel}</p></div><Button variant="ghost" size="icon" onClick={() => remove(line.id)} aria-label="Remover"><Trash2 className="text-destructive" /></Button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center rounded-md border border-input"><Button variant="ghost" size="icon" onClick={() => change(line.id, -1)} aria-label="Menos"><Minus /></Button><span className="w-8 text-center text-sm font-bold">{line.quantity}</span><Button variant="ghost" size="icon" onClick={() => change(line.id, 1)} aria-label="Mais"><Plus /></Button></div><strong>{mzn(line.price * line.minQuantity * line.quantity)}</strong></div></div></article>)}</div>
   <aside className="h-fit rounded-lg border border-border bg-card p-5 shadow-sm">
     <h2 className="font-display text-2xl">Resumo</h2>
-    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Entrega</span><span>{mzn(fee)}</span></div>{promo && <div className="flex justify-between text-primary"><span>Desconto {promo.code} ({promo.pct}%)</span><span>−{mzn(discount)}</span></div>}<div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
+    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Entrega</span><span className="text-primary">Grátis</span></div>{promo && <div className="flex justify-between text-primary"><span>Desconto {promo.code} ({promo.pct}%)</span><span>−{mzn(discount)}</span></div>}<div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
     <div className="mt-4 flex gap-2"><input className={fieldCls} placeholder="Código promocional" value={code} onChange={(e) => setCode(e.target.value)} /><Button variant="outline" onClick={() => void applyPromo()}><Tag /> Aplicar</Button></div>
     <h3 className="mt-6 text-sm font-bold">Endereço de entrega</h3>
     {signedIn && addresses.length > 0 ? <select className={`${fieldCls} mt-2`} value={addrId} onChange={(e) => setAddrId(e.target.value)}>{addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {a.address}</option>)}<option value="">Outro endereço…</option></select> : null}

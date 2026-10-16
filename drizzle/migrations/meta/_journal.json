@@ -22,6 +22,13 @@
       "when": 1792053072363,
       "tag": "0002_frontend_completion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792133897038,
+      "tag": "0003_free_delivery",
+      "breakpoints": true
     }
   ]
 }

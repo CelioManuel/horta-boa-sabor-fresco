@@ -4,7 +4,7 @@ import { Page, PageTitle } from "@/components/ui-bits";
 const faq: Array<[string, string]> = [
   ["Como faço uma encomenda?", "Escolha os produtos no catálogo, abra o carrinho, escolha o endereço e o método de pagamento e toque em “Finalizar encomenda”."],
   ["Quais são as formas de pagamento?", "M-Pesa, e-Mola, POS na entrega ou dinheiro. O operador confirma o pagamento quando o recebe."],
-  ["Quanto custa a entrega?", "A taxa de entrega aparece no carrinho antes de confirmar a encomenda."],
+  ["Quanto custa a entrega?", "A entrega é gratuita, sem taxa adicional."],
   ["Como acompanho a minha encomenda?", "Em “Encomendas” vê cada etapa: recebida, em preparação, a caminho, quase a chegar e entregue. Também recebe notificações."],
   ["Posso usar um código promocional?", "Sim. Escreva o código no carrinho e toque em “Aplicar”."],
   ["E se um produto chegar em mau estado?", "Contacte-nos no próprio dia e fazemos a substituição."],
@@ -32,7 +32,7 @@ export function TermsPage() {
     ["1. Objeto", "Estes termos regulam a compra de produtos hortícolas e outros artigos através da loja online Horta Boa."],
     ["2. Conta", "Para encomendar precisa de uma conta com dados verdadeiros. É responsável por manter a sua palavra-passe segura."],
     ["3. Preços e pagamento", "Os preços estão em meticais (MZN) e incluem as embalagens indicadas. O pagamento pode ser feito por M-Pesa, e-Mola, POS ou dinheiro."],
-    ["4. Entregas", "Entregamos na zona de cobertura da loja. A taxa de entrega é mostrada antes de confirmar a encomenda."],
+    ["4. Entregas", "Entregamos gratuitamente na zona de cobertura da loja."],
     ["5. Produtos frescos", "Por serem produtos frescos, o peso e o tamanho podem variar ligeiramente. Se algo chegar em mau estado, fazemos a substituição."],
     ["6. Cancelamentos", "Pode pedir o cancelamento enquanto a encomenda não estiver a caminho, contactando o apoio ao cliente."],
   ]} />;
