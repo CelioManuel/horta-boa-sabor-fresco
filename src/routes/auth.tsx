@@ -74,7 +74,7 @@ function AuthPage() {
     } catch { setMessage("Não foi possível reenviar o SMS. Tente mais tarde."); }
     finally { setBusy(false); }
   }
-  function reset() { setPendingPhone(""); setOtp(""); setPassword(""); setMessage(""); }
+  function reset() { setPendingPhone(""); setOtp(""); setPassword(""); setConfirm(""); setMessage(""); }
 
   return <main className="grid min-h-screen bg-leaf-soft lg:grid-cols-2">
     <section className="relative hidden overflow-hidden bg-primary lg:block"><img src={hero} alt="Hortícolas frescos" className="absolute inset-0 h-full w-full object-cover" /><div className="absolute inset-0 bg-hero-overlay" /><div className="relative flex h-full items-end p-12 text-primary-foreground"><div><Leaf className="mb-4 h-8 w-8 text-harvest" /><h1 className="font-display text-5xl">Fresco começa aqui.</h1><p className="mt-3 max-w-md text-primary-foreground/80">Da colheita à sua porta, com entrega gratuita.</p></div></div></section>
