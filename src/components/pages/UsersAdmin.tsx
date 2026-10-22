@@ -37,9 +37,13 @@ export function UsersAdmin({ onSaved }: { onSaved: () => void }) {
     setBusy(true); setMsg("");
     try {
       const fields = { full_name: editing.full_name, phone: editing.phone, nuit: editing.nuit, roles: editing.roles };
-      if (editing.id) await save({ data: { ...fields, id: editing.id } });
-      else await create({ data: { ...fields, email: editing.email, password: editing.password, redirectTo: window.location.origin } });
-      setMsg(editing.id ? "Perfil e permissões guardados." : "Conta criada. Foi enviado um convite de confirmação por email.");
+      if (editing.id) {
+        await save({ data: { ...fields, id: editing.id } });
+        setMsg("Perfil e permissões guardados.");
+      } else {
+        const result = await create({ data: { ...fields, email: editing.email, password: editing.password, redirectTo: window.location.origin } });
+        setMsg(result.emailSent ? "Conta criada. Foi enviado um email de confirmação." : "Conta criada, mas o email de confirmação não foi enviado. Verifique a configuração de emails; a conta aguarda confirmação.");
+      }
       setEditing(null); await load(); onSaved();
     } catch (error) { setMsg(error instanceof Error ? error.message : "Não foi possível guardar a conta."); }
     finally { setBusy(false); }

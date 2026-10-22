@@ -14,3 +14,4 @@
 - Use a shared PasswordInput for all password entry, so visibility controls stay consistent.
 - Home product links select a produce family in the full Products catalogue; family matching uses normalized leading names so package variants remain together.
 - Account creation and account listing use authenticated administrator server functions; profile/role updates use a single administrator-checked database function to keep permissions atomic.
+- Administrator-created email accounts remain unconfirmed until email verification; email delivery failure keeps the account pending and must not roll back a valid profile.
