@@ -1,11 +1,12 @@
 import { checkoutTotals } from "@/lib/checkout";
 import { productImageStyle } from "@/lib/product-images";
+import { filterCatalogue, produceFamily } from "@/lib/catalog";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, BarChart3, Bell, Check, ChevronRight, CircleUserRound, Clock3,
   Heart, Home, Leaf, LogOut, MapPin, Menu, Minus, Package, Plus, Search,
-  Settings, ShoppingBasket, ShoppingCart, Sprout, Store, Tag, Trash2, Truck, Users, X
+  Settings, ShoppingBasket, ShoppingCart, Sprout, Store, Trash2, Truck, Users, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +34,7 @@ const fallbackProducts: DbProduct[] = [
 const statusLabel: Record<string, string> = { received: "Recebida", preparing: "Em preparação", on_the_way: "A caminho", almost_there: "Quase a chegar", delivered: "Entregue", cancelled: "Cancelada" };
 const productPositions: Record<string, string> = { tomate: "product-tomate", batata: "product-batata", cenoura: "product-cenoura", cebola: "product-cebola", repolho: "product-repolho", pimento: "product-pimento" };
 
-export function HortaBoaApp({ view, children }: { view: View; children?: React.ReactNode }) {
+export function HortaBoaApp({ view, children, catalogMode = "home", family = "" }: { view: View; children?: React.ReactNode; catalogMode?: "home" | "products"; family?: string }) {
   const navigate = useNavigate();
   const { lines, count, subtotal, add, change, remove, clear } = useStore();
   const [products, setProducts] = useState<DbProduct[]>(fallbackProducts);
@@ -69,7 +70,7 @@ export function HortaBoaApp({ view, children }: { view: View; children?: React.R
   }, [view, userEmail]);
 
   const categories = ["Todos", ...Array.from(new Set(products.map((product) => product.category)))];
-  const visible = useMemo(() => products.filter((product) => (category === "Todos" || product.category === category) && product.name.toLowerCase().includes(query.toLowerCase())), [products, query, category]);
+  const visible = useMemo(() => filterCatalogue(products, query, category, catalogMode === "products" ? family : ""), [products, query, category, catalogMode, family]);
   const asCartProduct = (product: DbProduct): CartProduct => ({ id: product.id, name: product.name, category: product.category, price: product.price, unitLabel: product.unit_label, minQuantity: product.min_quantity, imageKey: product.image_key, stock: product.stock });
 
   async function signOut() {
@@ -100,7 +101,7 @@ export function HortaBoaApp({ view, children }: { view: View; children?: React.R
 
       {menuOpen && <div className="fixed inset-0 z-50 bg-overlay" onClick={() => setMenuOpen(false)}><aside className="h-full w-[84%] max-w-sm bg-background p-5" onClick={(event) => event.stopPropagation()}><div className="mb-8 flex items-center justify-between"><span className="font-display text-2xl text-primary">Horta Boa</span><Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)}><X /></Button></div><div className="grid gap-2"><NavItem to="/" icon={Home} label="Início" /><NavItem to="/produtos" icon={Sprout} label="Produtos" /><NavItem to="/carrinho" icon={ShoppingCart} label="Carrinho" /><NavItem to="/encomendas" icon={Package} label="Encomendas" /><NavItem to="/conta" icon={CircleUserRound} label="Conta" /></div></aside></div>}
 
-      {view === "catalog" && <Catalog products={visible} allProducts={products} categories={categories} category={category} setCategory={setCategory} query={query} setQuery={setQuery} add={(product) => { add(asCartProduct(product)); setNotice(`${product.name} adicionado ao carrinho`); }} />}
+      {view === "catalog" && <Catalog mode={catalogMode} family={family} products={visible} allProducts={products} categories={categories} category={category} setCategory={setCategory} query={query} setQuery={setQuery} add={(product) => { add(asCartProduct(product)); setNotice(`${product.name} adicionado ao carrinho`); }} />}
       {view === "cart" && <Cart lines={lines} subtotal={subtotal} change={change} remove={remove} clear={clear} />}
       {view === "orders" && <Orders orders={orders} signedIn={Boolean(userEmail)} />}
       {view === "account" && <Account email={userEmail} role={role} signOut={signOut} />}
@@ -127,22 +128,26 @@ export function HortaBoaApp({ view, children }: { view: View; children?: React.R
   );
 }
 
-function Catalog({ products, allProducts, categories, category, setCategory, query, setQuery, add }: { products: DbProduct[]; allProducts: DbProduct[]; categories: string[]; category: string; setCategory: (v: string) => void; query: string; setQuery: (v: string) => void; add: (product: DbProduct) => void }) {
+function Catalog({ mode, family, products, allProducts, categories, category, setCategory, query, setQuery, add }: { mode: "home" | "products"; family: string; products: DbProduct[]; allProducts: DbProduct[]; categories: string[]; category: string; setCategory: (v: string) => void; query: string; setQuery: (v: string) => void; add: (product: DbProduct) => void }) {
   return <main className="pb-28">
-    <section className="relative min-h-[520px] overflow-hidden bg-forest text-primary-foreground sm:min-h-[590px]">
+    {mode === "home" && <section className="relative min-h-[520px] overflow-hidden bg-forest text-primary-foreground sm:min-h-[590px]">
       <img src={heroImage} alt="Cesto com hortícolas frescos numa machamba" className="absolute inset-0 h-full w-full object-cover" width={1600} height={912} />
       <div className="absolute inset-0 bg-hero-overlay" />
       <div className="relative mx-auto flex min-h-[520px] max-w-7xl items-end px-5 pb-12 pt-24 sm:min-h-[590px] sm:px-8 sm:pb-16">
         <div className="max-w-xl"><span className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-foreground/30 bg-primary/80 px-3 py-1.5 text-xs font-bold uppercase tracking-[.14em]"><Leaf className="h-3.5 w-3.5" /> Da machamba para si</span><h1 className="font-display text-5xl leading-[.95] sm:text-7xl">Fresco. Local.<br />Todos os dias.</h1><p className="mt-5 max-w-lg text-base leading-7 text-primary-foreground/85 sm:text-lg">Os melhores hortícolas, selecionados com cuidado e entregues à sua porta em Maputo.</p><div className="mt-7 flex flex-wrap gap-3"><Button size="lg" variant="harvest" asChild><a href="#catalogo">Comprar agora <ChevronRight /></a></Button><span className="flex items-center gap-2 text-sm font-semibold"><Truck className="h-5 w-5 text-harvest" /> Entrega gratuita</span></div></div>
       </div>
-    </section>
+    </section>}
     <section id="catalogo" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-xs font-bold uppercase tracking-[.16em] text-tomato">Colheita de hoje</span><h2 className="mt-1 font-display text-3xl sm:text-4xl">Escolha o mais fresco</h2><p className="mt-2 text-sm text-muted-foreground">{allProducts.length} produtos disponíveis na nossa loja.</p></div><label className="flex h-11 w-full items-center gap-2 rounded-md border border-input bg-card px-3 sm:w-80"><Search className="h-4 w-4 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pesquisar hortícolas" className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label></div>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><span className="text-xs font-bold uppercase tracking-[.16em] text-tomato">{mode === "home" ? "Colheita de hoje" : family ? "Variantes" : "Catálogo completo"}</span><h2 className="mt-1 font-display text-3xl sm:text-4xl">{mode === "home" ? "Escolha o mais fresco" : family ? `Todas as variantes de ${family}` : "Todos os produtos"}</h2><p className="mt-2 text-sm text-muted-foreground">{mode === "home" ? `${allProducts.length} produtos disponíveis na nossa loja.` : `${products.length} produtos encontrados.`}</p>{family && <Link to="/produtos" className="mt-2 inline-block text-sm font-semibold text-primary">Ver todos os produtos</Link>}</div><label className="flex h-11 w-full items-center gap-2 rounded-md border border-input bg-card px-3 sm:w-80"><Search className="h-4 w-4 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pesquisar hortícolas" className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label></div>
       <div className="hide-scrollbar mb-7 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <Button key={item} variant={category === item ? "default" : "outline"} size="sm" onClick={() => setCategory(item)}>{item}</Button>)}</div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">{products.map((product) => <article key={product.id} className="group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><Link to="/produtos/$id" params={{ id: product.id }} className={`product-photo block ${productPositions[product.image_key] ?? "product-generic"}`} style={productImageStyle(product.image_key)}>{product.is_featured && <span className="absolute left-2 top-2 rounded-full bg-harvest px-2 py-1 text-[10px] font-bold uppercase text-harvest-foreground">Popular</span>}</Link><div className="p-3 sm:p-4"><span className="text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">{product.category}</span><Link to="/produtos/$id" params={{ id: product.id }}><h3 className="mt-1 min-h-10 font-display text-lg leading-5 hover:text-primary">{product.name}</h3></Link><p className="mt-2 hidden text-xs leading-5 text-muted-foreground sm:block">{product.description}</p><div className="mt-4 flex items-end justify-between gap-2"><div><strong className="text-lg text-primary">{product.price.toLocaleString("pt-MZ")} MZN</strong><span className="block text-[11px] text-muted-foreground">por {product.min_quantity === 1 ? product.unit_label : `${product.min_quantity} ${product.unit_label}`}</span></div><Button size="icon" disabled={product.stock <= 0} onClick={() => add(product)} aria-label={`Adicionar ${product.name}`}><Plus /></Button></div><span className={`mt-3 inline-block rounded-full px-2 py-1 text-[11px] font-bold ${stockState(product.stock).cls}`}>{stockState(product.stock).label}</span></div></article>)}</div>
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">{products.map((product) => <article key={product.id} className="group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><Link {...productLink(mode, product)} className={`product-photo block ${productPositions[product.image_key] ?? "product-generic"}`} style={productImageStyle(product.image_key)}>{product.is_featured && <span className="absolute left-2 top-2 rounded-full bg-harvest px-2 py-1 text-[10px] font-bold uppercase text-harvest-foreground">Popular</span>}</Link><div className="p-3 sm:p-4"><span className="text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">{product.category}</span><Link {...productLink(mode, product)}><h3 className="mt-1 min-h-10 font-display text-lg leading-5 hover:text-primary">{product.name}</h3></Link><p className="mt-2 hidden text-xs leading-5 text-muted-foreground sm:block">{product.description}</p><div className="mt-4 flex items-end justify-between gap-2"><div><strong className="text-lg text-primary">{product.price.toLocaleString("pt-MZ")} MZN</strong><span className="block text-[11px] text-muted-foreground">por {product.min_quantity === 1 ? product.unit_label : `${product.min_quantity} ${product.unit_label}`}</span></div><Button size="icon" disabled={product.stock <= 0} onClick={() => add(product)} aria-label={`Adicionar ${product.name}`}><Plus /></Button></div><span className={`mt-3 inline-block rounded-full px-2 py-1 text-[11px] font-bold ${stockState(product.stock).cls}`}>{stockState(product.stock).label}</span></div></article>)}</div>
     </section>
     <section className="border-y border-border bg-leaf-soft"><div className="mx-auto grid max-w-7xl gap-6 px-5 py-10 sm:grid-cols-3 sm:px-6"><Feature icon={Sprout} title="Colheita selecionada" text="Escolhemos produtos frescos de produtores locais." /><Feature icon={Truck} title="Entrega rápida" text="Receba a sua encomenda sem sair de casa." /><Feature icon={Check} title="Qualidade garantida" text="Se não estiver fresco, fazemos a substituição." /></div></section>
   </main>;
+}
+
+function productLink(mode: "home" | "products", product: DbProduct) {
+  return mode === "home" ? { to: "/produtos" as const, search: { familia: produceFamily(product.name) } } : { to: "/produtos/$id" as const, params: { id: product.id } };
 }
 
 type Method = "mpesa" | "emola" | "pos" | "cash";
@@ -156,21 +161,13 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   const [manual, setManual] = useState("");
   const [notes, setNotes] = useState("");
   const [store, setStore] = useState<{ id: string; fee: number } | null>(null);
-  const [code, setCode] = useState("");
-  const [promo, setPromo] = useState<{ code: string; pct: number } | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     void supabase.from("stores").select("id,delivery_fee").eq("is_active", true).order("created_at").limit(1).maybeSingle().then(({ data }) => data && setStore({ id: data.id, fee: Number(data.delivery_fee) }));
     void supabase.auth.getUser().then(({ data }) => { if (!data.user) return; setSignedIn(true); void supabase.from("user_addresses").select("id,label,address,city,is_default").order("is_default", { ascending: false }).then(({ data: a }) => { setAddresses(a ?? []); if (a?.[0]) setAddrId(a[0].id); }); });
   }, []);
-  const { deliveryFee: fee, discount, total } = checkoutTotals(subtotal, promo?.pct);
-  const applyPromo = async () => {
-    const c = code.trim().toUpperCase(); if (!c) return;
-    const { data } = await supabase.from("promotions").select("code,discount_percent").eq("code", c).maybeSingle();
-    if (!data) { setPromo(null); setNotice("Código inválido ou expirado."); return; }
-    setPromo({ code: data.code, pct: Number(data.discount_percent) }); setNotice("");
-  };
+  const { deliveryFee: fee, discount, total } = checkoutTotals(subtotal);
   const placeOrder = async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { await navigate({ to: "/auth" }); return; }
@@ -180,7 +177,7 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
     const outOfStock = lines.find((l) => l.stock <= 0);
     if (outOfStock) { setNotice(`${outOfStock.name} está fora de stock.`); return; }
     setBusy(true);
-    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: store?.id ?? null, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null, promotion_code: promo?.code ?? null }).select("id").single();
+    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: store?.id ?? null, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null }).select("id").single();
     if (error || !order) { setBusy(false); setNotice("Não foi possível criar a encomenda. Tente novamente."); return; }
     const { error: itemsError } = await supabase.from("order_items").insert(lines.map((line) => ({ order_id: order.id, product_id: line.id, product_name: line.name, unit_label: line.unitLabel, quantity: line.quantity * line.minQuantity, unit_price: line.price })));
     setBusy(false);
@@ -191,8 +188,7 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-6xl px-4 pb-28 pt-8 sm:px-6"><PageTitle back="/produtos" title="O seu carrinho" subtitle={`${lines.length} tipos de produtos selecionados`} />{lines.length === 0 ? <Empty icon={ShoppingBasket} title="O seu cesto está vazio" text="Escolha produtos frescos para começar a sua encomenda." action="Ver produtos" to="/produtos" /> : <div className="grid gap-8 lg:grid-cols-[1.35fr_.65fr]"><div className="space-y-3">{lines.map((line) => <article key={line.id} className="flex gap-4 rounded-lg border border-border bg-card p-3"><div className={`product-thumb ${productPositions[line.imageKey] ?? "product-generic"}`} style={productImageStyle(line.imageKey)} /><div className="min-w-0 flex-1"><div className="flex justify-between gap-3"><div><h3 className="font-display text-lg">{line.name}</h3><p className="text-xs text-muted-foreground">{mzn(line.price)} / {line.unitLabel}</p></div><Button variant="ghost" size="icon" onClick={() => remove(line.id)} aria-label="Remover"><Trash2 className="text-destructive" /></Button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center rounded-md border border-input"><Button variant="ghost" size="icon" onClick={() => change(line.id, -1)} aria-label="Menos"><Minus /></Button><span className="w-8 text-center text-sm font-bold">{line.quantity}</span><Button variant="ghost" size="icon" onClick={() => change(line.id, 1)} aria-label="Mais"><Plus /></Button></div><strong>{mzn(line.price * line.minQuantity * line.quantity)}</strong></div></div></article>)}</div>
   <aside className="h-fit rounded-lg border border-border bg-card p-5 shadow-sm">
     <h2 className="font-display text-2xl">Resumo</h2>
-    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Entrega</span><span className="text-primary">Grátis</span></div>{promo && <div className="flex justify-between text-primary"><span>Desconto {promo.code} ({promo.pct}%)</span><span>−{mzn(discount)}</span></div>}<div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
-    <div className="mt-4 flex gap-2"><input className={fieldCls} placeholder="Código promocional" value={code} onChange={(e) => setCode(e.target.value)} /><Button variant="outline" onClick={() => void applyPromo()}><Tag /> Aplicar</Button></div>
+    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Entrega</span><span className="text-primary">Grátis</span></div><div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
     <h3 className="mt-6 text-sm font-bold">Endereço de entrega</h3>
     {signedIn && addresses.length > 0 ? <select className={`${fieldCls} mt-2`} value={addrId} onChange={(e) => setAddrId(e.target.value)}>{addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {a.address}</option>)}<option value="">Outro endereço…</option></select> : null}
     {(!addrId || addresses.length === 0) && <input className={`${fieldCls} mt-2`} placeholder="Bairro, rua, número, referência" value={manual} onChange={(e) => setManual(e.target.value)} />}
