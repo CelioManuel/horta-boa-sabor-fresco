@@ -1,5 +1,7 @@
 # Horta Boa roadmap
 
+- [ ] Restore the original home product selection and show family variants in a product-detail-style page; verify navigation and basket.
+
 - [x] Keep home appearance and add a complete visible product catalogue with produce variants
 - [x] Allow password visibility everywhere and remove promotional checkout codes
 - [x] Add secure administrator account creation, profile editing and role management
