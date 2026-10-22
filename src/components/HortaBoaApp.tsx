@@ -1,6 +1,7 @@
 import { checkoutTotals } from "@/lib/checkout";
 import { productImageStyle } from "@/lib/product-images";
 import { filterCatalogue, produceFamily } from "@/lib/catalog";
+import { loadVisibleProducts } from "@/lib/catalog-data";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -37,7 +38,7 @@ const productPositions: Record<string, string> = { tomate: "product-tomate", bat
 export function HortaBoaApp({ view, children, catalogMode = "home", family = "" }: { view: View; children?: React.ReactNode; catalogMode?: "home" | "products"; family?: string }) {
   const navigate = useNavigate();
   const { lines, count, subtotal, add, change, remove, clear } = useStore();
-  const [products, setProducts] = useState<DbProduct[]>(fallbackProducts);
+  const [products, setProducts] = useState<DbProduct[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todos");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,9 +49,7 @@ export function HortaBoaApp({ view, children, catalogMode = "home", family = "" 
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    void supabase.from("products").select("id,name,category,price,unit_label,min_quantity,image_key,stock,description,is_featured").eq("is_active", true).order("is_featured", { ascending: false }).then(({ data }) => {
-      if (data?.length) setProducts(data.map((item) => ({ ...item, price: Number(item.price), min_quantity: Number(item.min_quantity), stock: Number(item.stock) })));
-    });
+    void loadVisibleProducts().then(setProducts).catch(() => setNotice("Não foi possível carregar os produtos. Tente novamente."));
     void supabase.auth.getUser().then(async ({ data }) => {
       setUserEmail(data.user?.email || data.user?.phone || null);
       if (data.user) {
