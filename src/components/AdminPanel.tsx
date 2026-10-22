@@ -5,6 +5,7 @@ import { productImageKeys } from "@/lib/product-images";
 import { AdminDashboard, PromotionsAdmin, StoresAdmin } from "@/components/pages/AdminExtras";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { UsersAdmin } from "@/components/pages/UsersAdmin";
 
 type Role = "admin" | "operator" | "customer";
 type Product = { id: string; sku?: string | null; name: string; category: string; price: number; unit_label: string; min_quantity: number; stock: number; image_key: string; description: string; is_active: boolean; is_featured: boolean };
@@ -55,12 +56,6 @@ export function AdminPanel() {
   };
   const toggleVisible = async (p: Product) => { await supabase.from("products").update({ is_active: !p.is_active }).eq("id", p.id); void loadProducts(); };
   const setStock = async (p: Product, stock: number) => { await supabase.from("products").update({ stock: Math.max(0, stock) }).eq("id", p.id); void loadProducts(); };
-  const toggleRole = async (person: Person, role: Role) => {
-    const has = person.roles.includes(role);
-    const { error } = has ? await supabase.from("user_roles").delete().eq("user_id", person.id).eq("role", role) : await supabase.from("user_roles").insert({ user_id: person.id, role });
-    if (error) flash("Erro: " + error.message); else flash("Permissões atualizadas.");
-    void loadPeople();
-  };
   const updateOrder = async (id: string, patch: { status?: Order["status"]; operator_id?: string | null; payment_status?: string }) => {
     const { error } = await supabase.from("orders").update(patch as never).eq("id", id);
     if (error) flash("Erro: " + error.message); void loadOrders();
@@ -114,10 +109,7 @@ export function AdminPanel() {
       {([["Em stock", inStock], ["Fora de stock", out]] as const).map(([title, list]) => <div key={title}><h2 className="font-display text-2xl">{title} ({list.length})</h2><div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">{list.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nenhum produto.</p>}{list.map((p) => <div key={p.id} className="flex items-center gap-3 border-b border-border p-3 last:border-0"><div className="flex-1"><strong className="block text-sm">{p.name}</strong><small className="text-muted-foreground">{p.stock} × {p.unit_label}</small></div><Button size="sm" variant="outline" onClick={() => void setStock(p, p.stock - 1)}>−</Button><input type="number" className="h-9 w-20 rounded-md border border-input bg-background px-2 text-sm" defaultValue={p.stock} key={p.stock} onBlur={(e) => Number(e.target.value) !== p.stock && void setStock(p, Number(e.target.value))} /><Button size="sm" variant="outline" onClick={() => void setStock(p, p.stock + 1)}>+</Button>{p.stock > 0 && <Button size="sm" variant="ghost" onClick={() => void setStock(p, 0)}>Esgotar</Button>}</div>)}</div></div>)}
     </section>}
 
-    {tab === "users" && <section className="mt-5 overflow-hidden rounded-lg border border-border bg-card">{people.length === 0 && <p className="p-4 text-sm text-muted-foreground">Ainda não há utilizadores registados.</p>}{people.map((u) => <div key={u.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">
-      <div className="min-w-40 flex-1"><strong className="block text-sm">{u.full_name || "Sem nome"}</strong><small className="text-muted-foreground">{u.phone || "Sem telefone"} · {u.roles.map((r) => roleLabel[r]).join(", ") || "Cliente"}</small></div>
-      {(["operator", "admin"] as const).map((r) => <Button key={r} size="sm" variant={u.roles.includes(r) ? "default" : "outline"} onClick={() => void toggleRole(u, r)}>{u.roles.includes(r) ? `Remover ${roleLabel[r].toLowerCase()}` : `Tornar ${roleLabel[r].toLowerCase()}`}</Button>)}
-    </div>)}</section>}
+    {tab === "users" && <UsersAdmin onSaved={() => void loadPeople()} />}
 
     {tab === "orders" && <section className="mt-5 overflow-hidden rounded-lg border border-border bg-card">{orders.length === 0 && <p className="p-4 text-sm text-muted-foreground">Ainda não há encomendas.</p>}{orders.map((o) => <div key={o.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">
       <div className="min-w-32 flex-1"><Link to="/encomendas/$id" params={{ id: o.id }} className="block text-sm font-bold underline-offset-2 hover:underline">#{o.order_number}</Link><small className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString("pt-MZ")} · {o.total.toLocaleString("pt-MZ")} MZN</small></div>

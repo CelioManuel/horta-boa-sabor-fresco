@@ -7,6 +7,7 @@ import { normalizePhone } from "@/lib/phone";
 import logo from "@/assets/horta-boa-mark.png";
 import hero from "@/assets/horta-boa-hero.jpg";
 import { fieldCls } from "@/components/ui-bits";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export const Route = createFileRoute("/auth")({ head: () => ({ meta: [{ title: "Entrar — Horta Boa" }, { name: "description", content: "Entre ou registe-se na Horta Boa com email ou telemóvel." }, { property: "og:title", content: "Entrar — Horta Boa" }, { property: "og:description", content: "Aceda às suas encomendas com email ou número de telemóvel." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: AuthPage });
 
@@ -87,8 +88,8 @@ function AuthPage() {
         {pendingPhone ? <><p className="text-sm text-muted-foreground">{pendingPhone}</p><label className="block text-sm font-semibold">Código SMS<input required pattern="[0-9]{6}" maxLength={6} inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} className={fieldCls} /></label></> : <>
           {signup && <label className="block text-sm font-semibold">Nome completo<input required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className={fieldCls} /></label>}
           {mode === "email" ? <label className="block text-sm font-semibold">Email<input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldCls} /></label> : <label className="block text-sm font-semibold">Número de telemóvel<input required type="tel" autoComplete="tel" placeholder="+258 84 123 4567" value={phone} onChange={(e) => setPhone(e.target.value)} className={fieldCls} /></label>}
-          <label className="block text-sm font-semibold">Palavra-passe<input required minLength={6} type="password" autoComplete={signup ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className={fieldCls} /></label>
-          {signup && <label className="block text-sm font-semibold">Confirmar palavra-passe<input required minLength={6} type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={fieldCls} aria-invalid={confirm.length > 0 && confirm !== password} />{confirm.length > 0 && confirm !== password && <span className="mt-1 block text-xs font-normal text-destructive">As palavras-passe não coincidem.</span>}</label>}
+          <label className="block text-sm font-semibold">Palavra-passe<PasswordInput required minLength={6} autoComplete={signup ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+          {signup && <label className="block text-sm font-semibold">Confirmar palavra-passe<PasswordInput required minLength={6} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={confirm.length > 0 && confirm !== password} />{confirm.length > 0 && confirm !== password && <span className="mt-1 block text-xs font-normal text-destructive">As palavras-passe não coincidem.</span>}</label>}
         </>}
         {message && <p role="status" className="rounded-md bg-muted p-3 text-sm">{message}</p>}
         <Button size="lg" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}{pendingPhone ? "Confirmar número" : signup ? "Criar conta" : "Entrar"}</Button>
