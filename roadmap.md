@@ -13,3 +13,5 @@
 - [x] Prepare a Docker server installation package and database migration instructions (installation and restore require the destination server)
 - [ ] Activate and verify SMS delivery (requires Twilio settings)
 - [ ] Connect hortaboa.co.mz (requires hosting destination and DNS setup)
+
+- [ ] Email e SMS via Turbohost no servidor próprio (aguarda dados SMTP e user_token SMS da Turbohost)

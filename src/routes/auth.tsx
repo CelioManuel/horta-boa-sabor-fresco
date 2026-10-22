@@ -18,6 +18,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [pendingPhone, setPendingPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
@@ -43,6 +44,7 @@ function AuthPage() {
         if (error) throw new Error("Código inválido ou expirado. Verifique o SMS ou peça outro código.");
         await finishLogin();
       } else if (signup) {
+        if (password !== confirm) throw new Error("As palavras-passe não coincidem.");
         const credentials = mode === "phone" ? { phone: normalizePhone(phone), password, options: { channel: "sms" as const, data: { full_name: name.trim() } } } : { email: email.trim(), password, options: { emailRedirectTo: window.location.origin, data: { full_name: name.trim() } } };
         const { data, error } = await supabase.auth.signUp(credentials);
         if (error) throw error;
@@ -72,7 +74,7 @@ function AuthPage() {
     } catch { setMessage("Não foi possível reenviar o SMS. Tente mais tarde."); }
     finally { setBusy(false); }
   }
-  function reset() { setPendingPhone(""); setOtp(""); setPassword(""); setMessage(""); }
+  function reset() { setPendingPhone(""); setOtp(""); setPassword(""); setConfirm(""); setMessage(""); }
 
   return <main className="grid min-h-screen bg-leaf-soft lg:grid-cols-2">
     <section className="relative hidden overflow-hidden bg-primary lg:block"><img src={hero} alt="Hortícolas frescos" className="absolute inset-0 h-full w-full object-cover" /><div className="absolute inset-0 bg-hero-overlay" /><div className="relative flex h-full items-end p-12 text-primary-foreground"><div><Leaf className="mb-4 h-8 w-8 text-harvest" /><h1 className="font-display text-5xl">Fresco começa aqui.</h1><p className="mt-3 max-w-md text-primary-foreground/80">Da colheita à sua porta, com entrega gratuita.</p></div></div></section>
@@ -86,6 +88,7 @@ function AuthPage() {
           {signup && <label className="block text-sm font-semibold">Nome completo<input required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className={fieldCls} /></label>}
           {mode === "email" ? <label className="block text-sm font-semibold">Email<input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldCls} /></label> : <label className="block text-sm font-semibold">Número de telemóvel<input required type="tel" autoComplete="tel" placeholder="+258 84 123 4567" value={phone} onChange={(e) => setPhone(e.target.value)} className={fieldCls} /></label>}
           <label className="block text-sm font-semibold">Palavra-passe<input required minLength={6} type="password" autoComplete={signup ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className={fieldCls} /></label>
+          {signup && <label className="block text-sm font-semibold">Confirmar palavra-passe<input required minLength={6} type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={fieldCls} aria-invalid={confirm.length > 0 && confirm !== password} />{confirm.length > 0 && confirm !== password && <span className="mt-1 block text-xs font-normal text-destructive">As palavras-passe não coincidem.</span>}</label>}
         </>}
         {message && <p role="status" className="rounded-md bg-muted p-3 text-sm">{message}</p>}
         <Button size="lg" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}{pendingPhone ? "Confirmar número" : signup ? "Criar conta" : "Entrar"}</Button>
