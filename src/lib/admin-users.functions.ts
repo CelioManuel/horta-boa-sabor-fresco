@@ -42,14 +42,14 @@ export const createAccount = createServerFn({ method: "POST" }).middleware([requ
   const origin = request.headers.get("origin") ?? new URL(request.url).origin;
   if (new URL(data.redirectTo).origin !== origin) throw new Error("Endereço de confirmação inválido.");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, { redirectTo: `${origin}/auth`, data: { full_name: data.full_name } });
-  if (error || !invited.user) throw new Error("Não foi possível criar a conta. Verifique o email, se a conta já existe e o envio de emails.");
-  const id = invited.user.id;
-  const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(id, { password: data.password });
-  const { error: profileError } = passwordError ? { error: passwordError } : await context.supabase.rpc("admin_save_profile_roles", { target_id: id, target_name: data.full_name, target_phone: data.phone, target_nuit: data.nuit, target_roles: data.roles });
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({ email: data.email, password: data.password, email_confirm: false, user_metadata: { full_name: data.full_name } });
+  if (error || !created.user) throw new Error("Não foi possível criar a conta. Verifique o email e se a conta já existe.");
+  const id = created.user.id;
+  const { error: profileError } = await context.supabase.rpc("admin_save_profile_roles", { target_id: id, target_name: data.full_name, target_phone: data.phone, target_nuit: data.nuit, target_roles: data.roles });
   if (profileError) {
     await supabaseAdmin.auth.admin.deleteUser(id);
     throw new Error("Não foi possível concluir a criação do perfil. Tente novamente.");
   }
-  return { ok: true };
+  const { error: emailError } = await supabaseAdmin.auth.resend({ type: "signup", email: data.email, options: { emailRedirectTo: `${origin}/auth` } });
+  return { ok: true, emailSent: !emailError };
 });
