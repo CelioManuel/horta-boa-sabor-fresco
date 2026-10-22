@@ -1,6 +1,6 @@
 import { checkoutTotals } from "@/lib/checkout";
 import { productImageStyle } from "@/lib/product-images";
-import { filterCatalogue, produceFamily } from "@/lib/catalog";
+import { filterCatalogue, homeCatalogue, produceFamily } from "@/lib/catalog";
 import { loadVisibleProducts } from "@/lib/catalog-data";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -68,8 +68,9 @@ export function HortaBoaApp({ view, children, catalogMode = "home", family = "" 
     });
   }, [view, userEmail]);
 
-  const categories = ["Todos", ...Array.from(new Set(products.map((product) => product.category)))];
-  const visible = useMemo(() => filterCatalogue(products, query, category, catalogMode === "products" ? family : ""), [products, query, category, catalogMode, family]);
+  const catalogue = useMemo(() => catalogMode === "home" ? homeCatalogue(products) : products, [products, catalogMode]);
+  const categories = ["Todos", ...Array.from(new Set(catalogue.map((product) => product.category)))];
+  const visible = useMemo(() => filterCatalogue(catalogue, query, category, catalogMode === "products" ? family : ""), [catalogue, query, category, catalogMode, family]);
   const asCartProduct = (product: DbProduct): CartProduct => ({ id: product.id, name: product.name, category: product.category, price: product.price, unitLabel: product.unit_label, minQuantity: product.min_quantity, imageKey: product.image_key, stock: product.stock });
 
   async function signOut() {
@@ -100,7 +101,7 @@ export function HortaBoaApp({ view, children, catalogMode = "home", family = "" 
 
       {menuOpen && <div className="fixed inset-0 z-50 bg-overlay" onClick={() => setMenuOpen(false)}><aside className="h-full w-[84%] max-w-sm bg-background p-5" onClick={(event) => event.stopPropagation()}><div className="mb-8 flex items-center justify-between"><span className="font-display text-2xl text-primary">Horta Boa</span><Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)}><X /></Button></div><div className="grid gap-2"><NavItem to="/" icon={Home} label="Início" /><NavItem to="/produtos" icon={Sprout} label="Produtos" /><NavItem to="/carrinho" icon={ShoppingCart} label="Carrinho" /><NavItem to="/encomendas" icon={Package} label="Encomendas" /><NavItem to="/conta" icon={CircleUserRound} label="Conta" /></div></aside></div>}
 
-      {view === "catalog" && <Catalog mode={catalogMode} family={family} products={visible} allProducts={products} categories={categories} category={category} setCategory={setCategory} query={query} setQuery={setQuery} add={(product) => { add(asCartProduct(product)); setNotice(`${product.name} adicionado ao carrinho`); }} />}
+      {view === "catalog" && <Catalog mode={catalogMode} family={family} products={visible} allProducts={catalogue} categories={categories} category={category} setCategory={setCategory} query={query} setQuery={setQuery} add={(product) => { add(asCartProduct(product)); setNotice(`${product.name} adicionado ao carrinho`); }} />}
       {view === "cart" && <Cart lines={lines} subtotal={subtotal} change={change} remove={remove} clear={clear} />}
       {view === "orders" && <Orders orders={orders} signedIn={Boolean(userEmail)} />}
       {view === "account" && <Account email={userEmail} role={role} signOut={signOut} />}
@@ -146,7 +147,7 @@ function Catalog({ mode, family, products, allProducts, categories, category, se
 }
 
 function productLink(mode: "home" | "products", product: DbProduct) {
-  return mode === "home" ? { to: "/produtos" as const, search: { familia: produceFamily(product.name) } } : { to: "/produtos/$id" as const, params: { id: product.id } };
+  return mode === "home" ? { to: "/produtos/variantes/$familia" as const, params: { familia: produceFamily(product.name) } } : { to: "/produtos/$id" as const, params: { id: product.id } };
 }
 
 type Method = "mpesa" | "emola" | "pos" | "cash";
