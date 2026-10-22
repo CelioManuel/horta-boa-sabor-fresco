@@ -1,5 +1,10 @@
 # Horta Boa roadmap
 
+- [ ] Keep home appearance and add a complete product catalogue with produce variants
+- [ ] Allow password visibility everywhere and remove promotional checkout codes
+- [ ] Add secure administrator account creation, profile editing and role management
+- [ ] Verify the requested catalogue and account flows
+
 - [x] Recreate the SAM customer shopping flow for horticultural products
 - [x] Add Horta Boa branding, produce imagery and responsive navigation
 - [x] Add independent Cloud data, roles and access rules
