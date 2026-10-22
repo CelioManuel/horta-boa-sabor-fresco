@@ -412,7 +412,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_save_profile_roles: {
+        Args: {
+          target_id: string
+          target_name: string
+          target_nuit: string
+          target_phone: string
+          target_roles: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "operator" | "customer"
