@@ -26,6 +26,7 @@ import { Route as ContaNotificacoesRouteImport } from './routes/conta_.notificac
 import { Route as ContaPerfilRouteImport } from './routes/conta_.perfil'
 import { Route as EncomendasIdRouteImport } from './routes/encomendas_.$id'
 import { Route as ProdutosIdRouteImport } from './routes/produtos_.$id'
+import { Route as ProdutosVariantesFamiliaRouteImport } from './routes/produtos_.variantes.$familia'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -112,6 +113,12 @@ const ProdutosIdRoute = ProdutosIdRouteImport.update({
   path: '/produtos/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProdutosVariantesFamiliaRoute =
+  ProdutosVariantesFamiliaRouteImport.update({
+    id: '/produtos_/variantes/$familia',
+    path: '/produtos/variantes/$familia',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/conta/perfil': typeof ContaPerfilRoute
   '/encomendas/$id': typeof EncomendasIdRoute
   '/produtos/$id': typeof ProdutosIdRoute
+  '/produtos/variantes/$familia': typeof ProdutosVariantesFamiliaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,6 +158,7 @@ export interface FileRoutesByTo {
   '/conta/perfil': typeof ContaPerfilRoute
   '/encomendas/$id': typeof EncomendasIdRoute
   '/produtos/$id': typeof ProdutosIdRoute
+  '/produtos/variantes/$familia': typeof ProdutosVariantesFamiliaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,6 +179,7 @@ export interface FileRoutesById {
   '/conta_/perfil': typeof ContaPerfilRoute
   '/encomendas_/$id': typeof EncomendasIdRoute
   '/produtos_/$id': typeof ProdutosIdRoute
+  '/produtos_/variantes/$familia': typeof ProdutosVariantesFamiliaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/conta/perfil'
     | '/encomendas/$id'
     | '/produtos/$id'
+    | '/produtos/variantes/$familia'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/conta/perfil'
     | '/encomendas/$id'
     | '/produtos/$id'
+    | '/produtos/variantes/$familia'
   id:
     | '__root__'
     | '/'
@@ -229,6 +241,7 @@ export interface FileRouteTypes {
     | '/conta_/perfil'
     | '/encomendas_/$id'
     | '/produtos_/$id'
+    | '/produtos_/variantes/$familia'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -249,6 +262,7 @@ export interface RootRouteChildren {
   ContaPerfilRoute: typeof ContaPerfilRoute
   EncomendasIdRoute: typeof EncomendasIdRoute
   ProdutosIdRoute: typeof ProdutosIdRoute
+  ProdutosVariantesFamiliaRoute: typeof ProdutosVariantesFamiliaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -372,6 +386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/produtos_/variantes/$familia': {
+      id: '/produtos_/variantes/$familia'
+      path: '/produtos/variantes/$familia'
+      fullPath: '/produtos/variantes/$familia'
+      preLoaderRoute: typeof ProdutosVariantesFamiliaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -393,6 +414,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContaPerfilRoute: ContaPerfilRoute,
   EncomendasIdRoute: EncomendasIdRoute,
   ProdutosIdRoute: ProdutosIdRoute,
+  ProdutosVariantesFamiliaRoute: ProdutosVariantesFamiliaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
