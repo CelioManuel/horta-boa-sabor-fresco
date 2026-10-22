@@ -6,7 +6,6 @@ const faq: Array<[string, string]> = [
   ["Quais são as formas de pagamento?", "M-Pesa, e-Mola, POS na entrega ou dinheiro. O operador confirma o pagamento quando o recebe."],
   ["Quanto custa a entrega?", "A entrega é gratuita, sem taxa adicional."],
   ["Como acompanho a minha encomenda?", "Em “Encomendas” vê cada etapa: recebida, em preparação, a caminho, quase a chegar e entregue. Também recebe notificações."],
-  ["Posso usar um código promocional?", "Sim. Escreva o código no carrinho e toque em “Aplicar”."],
   ["E se um produto chegar em mau estado?", "Contacte-nos no próprio dia e fazemos a substituição."],
 ];
 
