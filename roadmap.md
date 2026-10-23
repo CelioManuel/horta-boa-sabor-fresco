@@ -1,5 +1,9 @@
 # Horta Boa roadmap
 
+- [ ] Restrict operator-only accounts to their panel, including direct navigation and login
+- [ ] Group family variants by small, medium and large sizes and vary category photos
+- [ ] Test operator routing and variant selection through the UI
+
 - [x] Restore the original home product selection and show family variants in a product-detail-style page; verify navigation and basket.
 
 - [x] Keep home appearance and add a complete visible product catalogue with produce variants
