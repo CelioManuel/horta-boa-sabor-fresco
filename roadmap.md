@@ -1,6 +1,6 @@
 # Horta Boa roadmap
 
-- [ ] Remove baskets from produce size photos and restore natural onion colours across catalogue and variants
+- [x] Remove baskets from produce size photos and restore original golden onion colours across catalogue and variants; browser verified
 
 - [x] Match red potato shape/colour to uploaded reference and apply size photos to Products and product detail; verified catalogue, detail and family photos in browser
 
