@@ -1,12 +1,12 @@
-import smallPotato from "@/assets/variant-sizes/batata-small.jpg";
-import mediumPotato from "@/assets/variant-sizes/batata-medium.jpg";
-import largePotato from "@/assets/variant-sizes/batata-large.jpg";
-import smallRedPotato from "@/assets/variant-sizes/batata-vermelha-small-reference.jpg";
-import mediumRedPotato from "@/assets/variant-sizes/batata-vermelha-medium-reference.jpg";
-import largeRedPotato from "@/assets/variant-sizes/batata-vermelha-large-reference.jpg";
-import smallOnion from "@/assets/variant-sizes/cebola-small.jpg";
-import mediumOnion from "@/assets/variant-sizes/cebola-medium.jpg";
-import largeOnion from "@/assets/variant-sizes/cebola-large.jpg";
+import smallPotato from "@/assets/variant-sizes/batata-small-loose.jpg";
+import mediumPotato from "@/assets/variant-sizes/batata-medium-loose.jpg";
+import largePotato from "@/assets/variant-sizes/batata-large-loose.jpg";
+import smallRedPotato from "@/assets/variant-sizes/batata-vermelha-small-loose.jpg";
+import mediumRedPotato from "@/assets/variant-sizes/batata-vermelha-medium-loose.jpg";
+import largeRedPotato from "@/assets/variant-sizes/batata-vermelha-large-loose.jpg";
+import smallOnion from "@/assets/variant-sizes/cebola-small-loose.jpg";
+import mediumOnion from "@/assets/variant-sizes/cebola-medium-loose.jpg";
+import largeOnion from "@/assets/variant-sizes/cebola-large-loose.jpg";
 import { variantSize } from "@/lib/catalog";
 import { productImageStyle } from "@/lib/product-images";
 
