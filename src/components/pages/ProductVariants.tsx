@@ -3,10 +3,9 @@ import { Minus, Plus, ShoppingBasket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Empty, Page, PageTitle, fieldCls, mzn } from "@/components/ui-bits";
 import { stockState } from "@/components/AdminPanel";
-import { photoClass } from "@/components/pages/CustomerPages";
-import { filterCatalogue, homeCatalogue } from "@/lib/catalog";
+import { VariantPhoto } from "@/components/VariantPhoto";
+import { filterCatalogue, groupVariants, homeCatalogue } from "@/lib/catalog";
 import { loadVisibleProducts } from "@/lib/catalog-data";
-import { productImageStyle } from "@/lib/product-images";
 import { useStore } from "@/lib/store";
 
 type Product = Awaited<ReturnType<typeof loadVisibleProducts>>[number];
@@ -43,6 +42,7 @@ export function ProductVariants({ family }: { family: string }) {
   if (!product) return <Page><Empty title="Produto não encontrado" text="Não existem variantes disponíveis deste produto." action="Ver produtos" to="/produtos" /></Page>;
 
   const stock = stockState(product.stock);
+  const groups = groupVariants(variants);
   const selectVariant = (id: string) => { setSelectedId(id); setQuantity(1); setNotice(""); };
   const addToCart = () => {
     for (let i = 0; i < quantity; i++) add({ id: product.id, name: product.name, category: product.category, price: product.price, unitLabel: product.unit_label, minQuantity: product.min_quantity, imageKey: product.image_key, stock: product.stock });
@@ -52,7 +52,7 @@ export function ProductVariants({ family }: { family: string }) {
   return <Page wide>
     <PageTitle back="/" title={product.name} subtitle={product.category} />
     <div className="grid items-start gap-8 md:grid-cols-2">
-      <div role="img" aria-label={product.name} className={`product-photo rounded-lg ${photoClass(product.image_key)}`} style={productImageStyle(product.image_key)} />
+      <VariantPhoto product={product} className="rounded-lg" priority />
       <div className="min-w-0">
         <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${stock.cls}`}>{stock.label}</span>
         <p className="mt-4 font-display text-4xl text-primary">{mzn(product.price)}</p>
@@ -60,7 +60,7 @@ export function ProductVariants({ family }: { family: string }) {
         {product.description && <p className="mt-5 leading-7 text-muted-foreground">{product.description}</p>}
         <label className="mt-6 block text-sm font-semibold">Variante
           <select className={`${fieldCls} mt-2 font-normal`} value={selectedId} onChange={(event) => selectVariant(event.target.value)}>
-            {variants.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.unit_label}</option>)}
+            {groups.map((group) => <optgroup key={group.size} label={group.size}>{group.products.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.unit_label}</option>)}</optgroup>)}
           </select>
         </label>
         <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -77,10 +77,12 @@ export function ProductVariants({ family }: { family: string }) {
     </div>
     <section className="mt-12">
       <h2 className="font-display text-2xl">Todas as variantes ({variants.length})</h2>
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        {variants.map((item) => <article key={item.id} className={`overflow-hidden rounded-lg border bg-card ${selectedId === item.id ? "border-primary" : "border-border"}`}>
+      {groups.map((group) => <section key={group.size} className="mt-8">
+        <h3 className="border-b border-border pb-3 font-display text-xl">{group.size} <span className="text-sm text-muted-foreground">({group.products.length})</span></h3>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        {group.products.map((item) => <article key={item.id} className={`overflow-hidden rounded-lg border bg-card ${selectedId === item.id ? "border-primary" : "border-border"}`}>
           <Button variant="ghost" className="block h-auto w-full rounded-none p-0" aria-label={`Selecionar ${item.name}, ${item.unit_label}`} onClick={() => selectVariant(item.id)}>
-            <span className={`product-photo block w-full ${photoClass(item.image_key)}`} style={productImageStyle(item.image_key)} />
+            <VariantPhoto product={item} />
           </Button>
           <div className="p-3 sm:p-4">
             <h3 className="min-h-10 font-display text-lg leading-5">{item.name}</h3>
@@ -89,7 +91,8 @@ export function ProductVariants({ family }: { family: string }) {
             <Button className="mt-3 w-full" size="sm" variant={selectedId === item.id ? "default" : "outline"} aria-pressed={selectedId === item.id} onClick={() => selectVariant(item.id)}>{selectedId === item.id ? "Selecionado" : "Selecionar"}</Button>
           </div>
         </article>)}
-      </div>
+        </div>
+      </section>)}
     </section>
   </Page>;
 }
