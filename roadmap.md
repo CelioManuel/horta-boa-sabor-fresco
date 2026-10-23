@@ -1,6 +1,6 @@
 # Horta Boa roadmap
 
-- [ ] Match red potato shape/colour to uploaded reference and apply size photos to Products and product detail
+- [x] Match red potato shape/colour to uploaded reference and apply size photos to Products and product detail; verified catalogue, detail and family photos in browser
 
 - [x] Restrict operator-only accounts to their panel, including direct navigation and login
 - [x] Group family variants by small, medium and large sizes and vary category photos (batata branca/vermelha and cebola)
