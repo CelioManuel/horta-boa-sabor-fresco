@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/PasswordInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
-import { productImageStyle } from "@/lib/product-images";
+import { VariantPhoto } from "@/components/VariantPhoto";
 import { stockState } from "@/components/AdminPanel";
 import { Empty, Page, PageTitle, StatusTimeline, fieldCls, mzn, paymentLabel, statusLabel } from "@/components/ui-bits";
 
@@ -42,7 +42,7 @@ export function ProductDetail({ id }: { id: string }) {
   return <Page wide>
     <PageTitle back="/produtos" title={p.name} subtitle={p.category} />
     <div className="grid gap-8 md:grid-cols-2">
-      <div className={`product-photo rounded-lg ${photoClass(p.image_key)}`} style={productImageStyle(p.image_key)} />
+      <VariantPhoto product={p} className="rounded-lg" priority />
       <div>
         <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${st.cls}`}>{st.label}</span>
         <p className="mt-4 font-display text-4xl text-primary">{mzn(p.price)}</p>
@@ -55,7 +55,7 @@ export function ProductDetail({ id }: { id: string }) {
         <Button size="lg" className="mt-6 w-full sm:w-auto" disabled={p.stock <= 0} onClick={addToCart}><ShoppingBasket /> Adicionar ao carrinho</Button>
       </div>
     </div>
-    {related.length > 0 && <section className="mt-12"><h2 className="font-display text-2xl">Também pode gostar</h2><div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{related.map((r) => <Link key={r.id} to="/produtos/$id" params={{ id: r.id }} className="overflow-hidden rounded-lg border border-border bg-card"><div className={`product-photo ${photoClass(r.image_key)}`} style={productImageStyle(r.image_key)} /><div className="p-3"><strong className="block text-sm">{r.name}</strong><span className="text-sm text-primary">{mzn(r.price)}</span></div></Link>)}</div></section>}
+    {related.length > 0 && <section className="mt-12"><h2 className="font-display text-2xl">Também pode gostar</h2><div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{related.map((r) => <Link key={r.id} to="/produtos/$id" params={{ id: r.id }} className="overflow-hidden rounded-lg border border-border bg-card"><VariantPhoto product={r} /><div className="p-3"><strong className="block text-sm">{r.name}</strong><span className="text-sm text-primary">{mzn(r.price)}</span></div></Link>)}</div></section>}
   </Page>;
 }
 
