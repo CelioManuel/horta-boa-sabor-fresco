@@ -1,8 +1,9 @@
 # Horta Boa roadmap
 
-- [ ] Restrict operator-only accounts to their panel, including direct navigation and login
-- [ ] Group family variants by small, medium and large sizes and vary category photos
-- [ ] Test operator routing and variant selection through the UI
+- [x] Restrict operator-only accounts to their panel, including direct navigation and login
+- [x] Group family variants by small, medium and large sizes and vary category photos (batata branca/vermelha and cebola)
+- [x] Test real variant selection, basket read-back, image loading and controlled operator-role redirects through the UI; 19 tests passed
+- [ ] Validate with a real operator session (no active operator auth account exists in the available test backend)
 
 - [x] Restore the original home product selection and show family variants in a product-detail-style page; verify navigation and basket.
 
