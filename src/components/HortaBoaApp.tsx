@@ -2,6 +2,9 @@ import { checkoutTotals } from "@/lib/checkout";
 import { productImageStyle } from "@/lib/product-images";
 import { filterCatalogue, homeCatalogue, produceFamily } from "@/lib/catalog";
 import { loadVisibleProducts } from "@/lib/catalog-data";
+import { useAccess } from "@/components/AccessProvider";
+import { operatorOnly, type AppRole } from "@/lib/access";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -21,7 +24,6 @@ import logoMark from "@/assets/horta-boa-mark.png";
 type View = "catalog" | "cart" | "orders" | "account" | "admin" | "operator" | "page";
 type DbProduct = { id: string; name: string; category: string; price: number; unit_label: string; min_quantity: number; image_key: string; stock: number; description: string; is_featured: boolean };
 type Order = { id: string; order_number: number; status: string; payment_status: string; total: number; delivery_address: string; created_at: string };
-type AppRole = "admin" | "operator" | "customer";
 
 const fallbackProducts: DbProduct[] = [
   ["tomate", "Tomate Fresco", "Frutos", 800, "caixa de 10 kg", 1, 40, "Tomate maduro, firme e selecionado diariamente."],
@@ -37,28 +39,19 @@ const productPositions: Record<string, string> = { tomate: "product-tomate", bat
 
 export function HortaBoaApp({ view, children, catalogMode = "home", family = "" }: { view: View; children?: React.ReactNode; catalogMode?: "home" | "products"; family?: string }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { email: userEmail, role, ready: identityReady } = useAccess();
+  const isOperator = operatorOnly(role);
   const { lines, count, subtotal, add, change, remove, clear } = useStore();
   const [products, setProducts] = useState<DbProduct[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todos");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
-  const [identityReady, setIdentityReady] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
     void loadVisibleProducts().then(setProducts).catch(() => setNotice("Não foi possível carregar os produtos. Tente novamente."));
-    void supabase.auth.getUser().then(async ({ data }) => {
-      setUserEmail(data.user?.email || data.user?.phone || null);
-      if (data.user) {
-        const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
-        const roles = (roleRows ?? []).map((row) => row.role as AppRole);
-        setRole(roles.includes("admin") ? "admin" : roles.includes("operator") ? "operator" : "customer");
-      }
-      setIdentityReady(true);
-    });
   }, []);
 
   useEffect(() => {
@@ -74,28 +67,29 @@ export function HortaBoaApp({ view, children, catalogMode = "home", family = "" 
   const asCartProduct = (product: DbProduct): CartProduct => ({ id: product.id, name: product.name, category: product.category, price: product.price, unitLabel: product.unit_label, minQuantity: product.min_quantity, imageKey: product.image_key, stock: product.stock });
 
   async function signOut() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
     await supabase.auth.signOut();
-    setUserEmail(null);
-    await navigate({ to: "/" });
+    await navigate({ to: "/auth", replace: true });
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-18 max-w-7xl items-center gap-4 px-4 sm:px-6">
-          <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu" onClick={() => setMenuOpen(true)}><Menu /></Button>
-          <Link to="/" className="flex items-center gap-2.5" aria-label="Horta Boa">
+          {!isOperator && <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu" onClick={() => setMenuOpen(true)}><Menu /></Button>}
+          <Link to={isOperator ? "/operador" : "/"} className="flex items-center gap-2.5" aria-label="Horta Boa">
             <img src={logoMark} alt="" className="h-10 w-10 object-contain" width={1024} height={1024} />
             <div><strong className="block font-display text-xl leading-none text-primary">Horta Boa</strong><span className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Fresco da nossa terra</span></div>
           </Link>
-          <nav className="ml-auto hidden items-center gap-1 lg:flex">
+          {isOperator ? <div className="ml-auto flex items-center gap-3"><span className="hidden text-sm text-muted-foreground sm:block">Operador</span><Button variant="outline" size="sm" onClick={() => void signOut()}><LogOut /> Sair</Button></div> : <><nav className="ml-auto hidden items-center gap-1 lg:flex">
             <NavItem to="/" icon={Home} label="Início" />
             <NavItem to="/produtos" icon={Sprout} label="Produtos" />
             <NavItem to="/encomendas" icon={Package} label="Encomendas" />
             <NavItem to="/conta" icon={CircleUserRound} label="Conta" />
           </nav>
           {userEmail && <Link to="/conta/notificacoes" className="ml-auto flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent lg:ml-3" aria-label="Notificações"><Bell className="h-5 w-5" /></Link>}
-          <Link to="/carrinho" className={`relative ${userEmail ? "ml-1" : "ml-auto lg:ml-3"}`}><span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><ShoppingBasket className="h-5 w-5" /></span>{count > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-harvest px-1 text-[10px] font-bold text-harvest-foreground">{count}</span>}</Link>
+          <Link to="/carrinho" className={`relative ${userEmail ? "ml-1" : "ml-auto lg:ml-3"}`}><span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"><ShoppingBasket className="h-5 w-5" /></span>{count > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-harvest px-1 text-[10px] font-bold text-harvest-foreground">{count}</span>}</Link></>}
         </div>
       </header>
 
@@ -123,7 +117,7 @@ export function HortaBoaApp({ view, children, catalogMode = "home", family = "" 
           </span>
         </Link>
       )}
-      <MobileNav count={count} />
+      {!isOperator && <MobileNav count={count} />}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import logo from "@/assets/horta-boa-mark.png";
 import hero from "@/assets/horta-boa-hero.jpg";
 import { fieldCls } from "@/components/ui-bits";
 import { PasswordInput } from "@/components/PasswordInput";
+import { primaryRole, sessionDestination } from "@/lib/access";
 
 export const Route = createFileRoute("/auth")({ head: () => ({ meta: [{ title: "Entrar — Horta Boa" }, { name: "description", content: "Entre ou registe-se na Horta Boa com email ou telemóvel." }, { property: "og:title", content: "Entrar — Horta Boa" }, { property: "og:description", content: "Aceda às suas encomendas com email ou número de telemóvel." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: AuthPage });
 
@@ -34,8 +35,10 @@ function AuthPage() {
     const { error: profileError } = await supabase.from("profiles").upsert({ id: data.user.id, full_name: fullName, phone: data.user.phone ?? "" }, { onConflict: "id", ignoreDuplicates: true });
     const { error: roleError } = await supabase.from("user_roles").upsert({ user_id: data.user.id, role: "customer" }, { onConflict: "user_id,role", ignoreDuplicates: true });
     if (profileError || roleError) throw new Error("A sessão foi iniciada, mas não foi possível preparar a conta. Tente entrar novamente.");
+    const { data: roles, error: readError } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+    if (readError) throw new Error("Não foi possível confirmar as permissões da conta.");
     setPassword("");
-    await navigate({ to: "/produtos" });
+    await navigate({ to: sessionDestination(primaryRole((roles ?? []).map((row) => row.role))), replace: true });
   }
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setMessage("");

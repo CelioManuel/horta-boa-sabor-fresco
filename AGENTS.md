@@ -13,5 +13,7 @@
 - Keep Bun tests in root `tests/` outside the browser TypeScript include; this prevents Bun global types from changing browser fetch definitions.
 - Use a shared PasswordInput for all password entry, so visibility controls stay consistent.
 - Home selection is separate from the complete visible catalogue; home links open a dedicated family detail route using normalized leading names so package variants remain together.
+- Derive variant size groups from explicit Portuguese size words, never package weight; leave unclassified products visible and resolve size-specific imagery through VariantPhoto.
+- AccessProvider owns session identity and the single auth-change subscriber, blocks page rendering until roles load and redirects operator-only identities globally; database authorization remains enforced by existing RLS and server checks.
 - Account creation and account listing use authenticated administrator server functions; profile/role updates use a single administrator-checked database function to keep permissions atomic.
 - Administrator-created email accounts remain unconfirmed until email verification; email delivery failure keeps the account pending and must not roll back a valid profile.
