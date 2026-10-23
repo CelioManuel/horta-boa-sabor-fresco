@@ -1,5 +1,7 @@
 # Horta Boa roadmap
 
+- [ ] Match red potato shape/colour to uploaded reference and apply size photos to Products and product detail
+
 - [x] Restrict operator-only accounts to their panel, including direct navigation and login
 - [x] Group family variants by small, medium and large sizes and vary category photos (batata branca/vermelha and cebola)
 - [x] Test real variant selection, basket read-back, image loading and controlled operator-role redirects through the UI; 19 tests passed
