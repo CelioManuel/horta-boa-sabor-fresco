@@ -22,6 +22,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pendingPhone, setPendingPhone] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,6 +48,10 @@ function AuthPage() {
         const { error } = await supabase.auth.verifyOtp({ phone: pendingPhone, token: otp.trim(), type: "sms" });
         if (error) throw new Error("Código inválido ou expirado. Verifique o SMS ou peça outro código.");
         await finishLogin();
+      } else if (pendingEmail) {
+        const { error } = await supabase.auth.verifyOtp({ email: pendingEmail, token: otp.trim(), type: "signup" });
+        if (error) throw new Error("Código inválido ou expirado. Verifique o email ou peça outro código.");
+        await finishLogin();
       } else if (signup) {
         if (password !== confirm) throw new Error("As palavras-passe não coincidem.");
         const credentials = mode === "phone" ? { phone: normalizePhone(phone), password, options: { channel: "sms" as const, data: { full_name: name.trim() } } } : { email: email.trim(), password, options: { emailRedirectTo: window.location.origin, data: { full_name: name.trim() } } };
@@ -56,7 +61,7 @@ function AuthPage() {
           setPendingPhone(normalizePhone(phone)); setResendAt(Date.now() + 60000); setPassword("");
           setMessage("Enviámos um código por SMS para confirmar o seu número.");
         } else if (data.session) await finishLogin();
-        else { setPassword(""); setMessage("Confirme o email que enviámos para concluir o registo."); }
+        else { setPendingEmail(email.trim()); setResendAt(Date.now() + 60000); setPassword(""); setConfirm(""); setMessage("Enviámos um código de 6 dígitos para o seu email."); }
       } else {
         const credentials = mode === "phone" ? { phone: normalizePhone(phone), password } : { email: email.trim(), password };
         const { error } = await supabase.auth.signInWithPassword(credentials);
@@ -72,32 +77,32 @@ function AuthPage() {
     if (Date.now() < resendAt) { setMessage("Aguarde um minuto antes de pedir outro código."); return; }
     setBusy(true);
     try {
-      const { error } = await supabase.auth.resend({ type: "sms", phone: pendingPhone });
+      const { error } = pendingEmail ? await supabase.auth.resend({ type: "signup", email: pendingEmail }) : await supabase.auth.resend({ type: "sms", phone: pendingPhone });
       if (error) throw error;
-      setResendAt(Date.now() + 60000); setMessage("Novo código enviado por SMS.");
-    } catch { setMessage("Não foi possível reenviar o SMS. Tente mais tarde."); }
+      setResendAt(Date.now() + 60000); setMessage(pendingEmail ? "Novo código enviado por email." : "Novo código enviado por SMS.");
+    } catch { setMessage("Não foi possível reenviar o código. Tente mais tarde."); }
     finally { setBusy(false); }
   }
-  function reset() { setPendingPhone(""); setOtp(""); setPassword(""); setConfirm(""); setMessage(""); }
+  function reset() { setPendingPhone(""); setPendingEmail(""); setOtp(""); setPassword(""); setConfirm(""); setMessage(""); }
 
   return <main className="grid min-h-screen bg-leaf-soft lg:grid-cols-2">
     <section className="relative hidden overflow-hidden bg-primary lg:block"><img src={hero} alt="Hortícolas frescos" className="absolute inset-0 h-full w-full object-cover" /><div className="absolute inset-0 bg-hero-overlay" /><div className="relative flex h-full items-end p-12 text-primary-foreground"><div><Leaf className="mb-4 h-8 w-8 text-harvest" /><h1 className="font-display text-5xl">Fresco começa aqui.</h1><p className="mt-3 max-w-md text-primary-foreground/80">Da colheita à sua porta, com entrega gratuita.</p></div></div></section>
     <section className="flex items-center justify-center p-5"><div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl sm:p-8">
       <Button variant="ghost" size="sm" asChild><Link to="/"><ArrowLeft /> Voltar</Link></Button>
       <div className="mt-5 flex items-center gap-3"><img src={logo} alt="" className="h-12 w-12" width={1024} height={1024} /><div><span className="font-display text-2xl text-primary">Horta Boa</span><p className="text-xs text-muted-foreground">Fresco da nossa terra</p></div></div>
-      <h2 className="mt-8 font-display text-3xl">{pendingPhone ? "Confirmar telemóvel" : signup ? "Criar conta" : "Bem-vindo de volta"}</h2>
-      {!pendingPhone && <div className="mt-5 grid grid-cols-2 gap-2" role="group" aria-label="Método de registo"><Button type="button" variant={mode === "email" ? "default" : "outline"} aria-pressed={mode === "email"} onClick={() => { setMode("email"); reset(); }}><Mail /> Email</Button><Button type="button" variant={mode === "phone" ? "default" : "outline"} aria-pressed={mode === "phone"} onClick={() => { setMode("phone"); reset(); }}><Phone /> Telemóvel</Button></div>}
+      <h2 className="mt-8 font-display text-3xl">{pendingEmail ? "Confirmar email" : pendingPhone ? "Confirmar telemóvel" : signup ? "Criar conta" : "Bem-vindo de volta"}</h2>
+      {!pendingPhone && !pendingEmail && <div className="mt-5 grid grid-cols-2 gap-2" role="group" aria-label="Método de registo"><Button type="button" variant={mode === "email" ? "default" : "outline"} aria-pressed={mode === "email"} onClick={() => { setMode("email"); reset(); }}><Mail /> Email</Button><Button type="button" variant={mode === "phone" ? "default" : "outline"} aria-pressed={mode === "phone"} onClick={() => { setMode("phone"); reset(); }}><Phone /> Telemóvel</Button></div>}
       <form className="mt-6 space-y-4" onSubmit={submit}>
-        {pendingPhone ? <><p className="text-sm text-muted-foreground">{pendingPhone}</p><label className="block text-sm font-semibold">Código SMS<input required pattern="[0-9]{6}" maxLength={6} inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} className={fieldCls} /></label></> : <>
+        {pendingPhone || pendingEmail ? <><p className="text-sm text-muted-foreground">{pendingEmail || pendingPhone}</p><label className="block text-sm font-semibold">{pendingEmail ? "Código do email" : "Código SMS"}<input required pattern="[0-9]{6}" maxLength={6} inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} className={fieldCls} /></label></> : <>
           {signup && <label className="block text-sm font-semibold">Nome completo<input required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className={fieldCls} /></label>}
           {mode === "email" ? <label className="block text-sm font-semibold">Email<input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={fieldCls} /></label> : <label className="block text-sm font-semibold">Número de telemóvel<input required type="tel" autoComplete="tel" placeholder="+258 84 123 4567" value={phone} onChange={(e) => setPhone(e.target.value)} className={fieldCls} /></label>}
           <label className="block text-sm font-semibold">Palavra-passe<PasswordInput required minLength={6} autoComplete={signup ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
           {signup && <label className="block text-sm font-semibold">Confirmar palavra-passe<PasswordInput required minLength={6} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={confirm.length > 0 && confirm !== password} />{confirm.length > 0 && confirm !== password && <span className="mt-1 block text-xs font-normal text-destructive">As palavras-passe não coincidem.</span>}</label>}
         </>}
         {message && <p role="status" className="rounded-md bg-muted p-3 text-sm">{message}</p>}
-        <Button size="lg" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}{pendingPhone ? "Confirmar número" : signup ? "Criar conta" : "Entrar"}</Button>
+        <Button size="lg" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin" />}{pendingEmail ? "Confirmar email" : pendingPhone ? "Confirmar número" : signup ? "Criar conta" : "Entrar"}</Button>
       </form>
-      {pendingPhone ? <div className="mt-4 flex flex-wrap gap-2"><Button variant="ghost" disabled={busy} onClick={() => void resend()}><RefreshCw /> Reenviar código</Button><Button variant="ghost" disabled={busy} onClick={reset}><ArrowLeft /> Alterar número</Button></div> : <Button variant="link" className="mt-5 h-auto w-full whitespace-normal" disabled={busy} onClick={() => { setSignup(!signup); reset(); }}>{signup ? "Já tem conta? Entrar" : "Ainda não tem conta? Registar"}</Button>}
+      {pendingPhone || pendingEmail ? <div className="mt-4 flex flex-wrap gap-2"><Button variant="ghost" disabled={busy} onClick={() => void resend()}><RefreshCw /> Reenviar código</Button><Button variant="ghost" disabled={busy} onClick={reset}><ArrowLeft /> {pendingEmail ? "Alterar email" : "Alterar número"}</Button></div> : <Button variant="link" className="mt-5 h-auto w-full whitespace-normal" disabled={busy} onClick={() => { setSignup(!signup); reset(); }}>{signup ? "Já tem conta? Entrar" : "Ainda não tem conta? Registar"}</Button>}
     </div></section>
   </main>;
 }
