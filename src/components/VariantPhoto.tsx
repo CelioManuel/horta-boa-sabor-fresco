@@ -21,6 +21,6 @@ const photos = {
 export function VariantPhoto({ product, className = "", priority = false }: { product: { name: string; image_key: string }; className?: string; priority?: boolean }) {
   const size = variantSize(product.name);
   const set = product.image_key === "batata" ? /vermelha/i.test(product.name) ? photos.redPotato : photos.batata : product.image_key === "cebola" ? photos.cebola : null;
-  const image = set && size !== "Outras variantes" ? set[size] : product.image_key === "batata" && /vermelha/i.test(product.name) ? mediumRedPotato : null;
+  const image = set ? size !== "Outras variantes" ? set[size] : set["Médias"] : product.image_key === "batata" && /vermelha/i.test(product.name) ? mediumRedPotato : null;
   return image ? <img src={image} alt={product.name} width={512} height={512} loading={priority ? "eager" : "lazy"} className={`aspect-square w-full object-cover ${className}`} /> : <div role="img" aria-label={product.name} className={`product-photo w-full ${sprite[product.image_key] ?? "product-generic"} ${className}`} style={productImageStyle(product.image_key)} />;
 }
