@@ -47,6 +47,10 @@ function AuthPage() {
         const { error } = await supabase.auth.verifyOtp({ phone: pendingPhone, token: otp.trim(), type: "sms" });
         if (error) throw new Error("Código inválido ou expirado. Verifique o SMS ou peça outro código.");
         await finishLogin();
+      } else if (pendingEmail) {
+        const { error } = await supabase.auth.verifyOtp({ email: pendingEmail, token: otp.trim(), type: "signup" });
+        if (error) throw new Error("Código inválido ou expirado. Verifique o email ou peça outro código.");
+        await finishLogin();
       } else if (signup) {
         if (password !== confirm) throw new Error("As palavras-passe não coincidem.");
         const credentials = mode === "phone" ? { phone: normalizePhone(phone), password, options: { channel: "sms" as const, data: { full_name: name.trim() } } } : { email: email.trim(), password, options: { emailRedirectTo: window.location.origin, data: { full_name: name.trim() } } };
@@ -56,7 +60,7 @@ function AuthPage() {
           setPendingPhone(normalizePhone(phone)); setResendAt(Date.now() + 60000); setPassword("");
           setMessage("Enviámos um código por SMS para confirmar o seu número.");
         } else if (data.session) await finishLogin();
-        else { setPassword(""); setMessage("Confirme o email que enviámos para concluir o registo."); }
+        else { setPendingEmail(email.trim()); setResendAt(Date.now() + 60000); setPassword(""); setConfirm(""); setMessage("Enviámos um código de 6 dígitos para o seu email."); }
       } else {
         const credentials = mode === "phone" ? { phone: normalizePhone(phone), password } : { email: email.trim(), password };
         const { error } = await supabase.auth.signInWithPassword(credentials);
