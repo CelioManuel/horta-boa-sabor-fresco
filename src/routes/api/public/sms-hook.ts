@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 // Auth "Send SMS" hook: receives the OTP from the auth service and sends it via Turbohost.
 async function verify(req: Request, raw: string) {
-  const secret = (process.env.SMS_HOOK_SECRET || "").replace(/^v1,/, "").replace(/^whsec_/, "");
+  const secret = (process.env["SMS_HOOK_SECRET"] || "").replace(/^v1,/, "").replace(/^whsec_/, "");
   const id = req.headers.get("webhook-id"), ts = req.headers.get("webhook-timestamp"), sig = req.headers.get("webhook-signature");
   if (!secret || !id || !ts || !sig) return false;
   if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;
