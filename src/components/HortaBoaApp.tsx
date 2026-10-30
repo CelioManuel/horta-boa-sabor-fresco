@@ -1,4 +1,5 @@
 import { checkoutTotals } from "@/lib/checkout";
+import { notifyNewOrder } from "@/lib/order-notify.functions";
 import { productImageStyle } from "@/lib/product-images";
 import { VariantPhoto } from "@/components/VariantPhoto";
 import { filterCatalogue, homeCatalogue, produceFamily } from "@/lib/catalog";
@@ -177,6 +178,7 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
     const { error: itemsError } = await supabase.from("order_items").insert(lines.map((line) => ({ order_id: order.id, product_id: line.id, product_name: line.name, unit_label: line.unitLabel, quantity: line.quantity * line.minQuantity, unit_price: line.price })));
     setBusy(false);
     if (itemsError) { setNotice("A encomenda foi criada, mas os itens precisam de confirmação."); return; }
+    void notifyNewOrder({ data: { orderId: order.id } }).catch(() => undefined);
     clear();
     await navigate({ to: "/encomendas/$id", params: { id: order.id } });
   };

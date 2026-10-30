@@ -26,6 +26,7 @@ import { Route as ContaNotificacoesRouteImport } from './routes/conta_.notificac
 import { Route as ContaPerfilRouteImport } from './routes/conta_.perfil'
 import { Route as EncomendasIdRouteImport } from './routes/encomendas_.$id'
 import { Route as ProdutosIdRouteImport } from './routes/produtos_.$id'
+import { Route as ApiPublicSmsHookRouteImport } from './routes/api/public/sms-hook'
 import { Route as ProdutosVariantesFamiliaRouteImport } from './routes/produtos_.variantes.$familia'
 
 const IndexRoute = IndexRouteImport.update({
@@ -113,6 +114,11 @@ const ProdutosIdRoute = ProdutosIdRouteImport.update({
   path: '/produtos/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSmsHookRoute = ApiPublicSmsHookRouteImport.update({
+  id: '/api/public/sms-hook',
+  path: '/api/public/sms-hook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutosVariantesFamiliaRoute =
   ProdutosVariantesFamiliaRouteImport.update({
     id: '/produtos_/variantes/$familia',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/conta/perfil': typeof ContaPerfilRoute
   '/encomendas/$id': typeof EncomendasIdRoute
   '/produtos/$id': typeof ProdutosIdRoute
+  '/api/public/sms-hook': typeof ApiPublicSmsHookRoute
   '/produtos/variantes/$familia': typeof ProdutosVariantesFamiliaRoute
 }
 export interface FileRoutesByTo {
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/conta/perfil': typeof ContaPerfilRoute
   '/encomendas/$id': typeof EncomendasIdRoute
   '/produtos/$id': typeof ProdutosIdRoute
+  '/api/public/sms-hook': typeof ApiPublicSmsHookRoute
   '/produtos/variantes/$familia': typeof ProdutosVariantesFamiliaRoute
 }
 export interface FileRoutesById {
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/conta_/perfil': typeof ContaPerfilRoute
   '/encomendas_/$id': typeof EncomendasIdRoute
   '/produtos_/$id': typeof ProdutosIdRoute
+  '/api/public/sms-hook': typeof ApiPublicSmsHookRoute
   '/produtos_/variantes/$familia': typeof ProdutosVariantesFamiliaRoute
 }
 export interface FileRouteTypes {
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/conta/perfil'
     | '/encomendas/$id'
     | '/produtos/$id'
+    | '/api/public/sms-hook'
     | '/produtos/variantes/$familia'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/conta/perfil'
     | '/encomendas/$id'
     | '/produtos/$id'
+    | '/api/public/sms-hook'
     | '/produtos/variantes/$familia'
   id:
     | '__root__'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/conta_/perfil'
     | '/encomendas_/$id'
     | '/produtos_/$id'
+    | '/api/public/sms-hook'
     | '/produtos_/variantes/$familia'
   fileRoutesById: FileRoutesById
 }
@@ -262,6 +274,7 @@ export interface RootRouteChildren {
   ContaPerfilRoute: typeof ContaPerfilRoute
   EncomendasIdRoute: typeof EncomendasIdRoute
   ProdutosIdRoute: typeof ProdutosIdRoute
+  ApiPublicSmsHookRoute: typeof ApiPublicSmsHookRoute
   ProdutosVariantesFamiliaRoute: typeof ProdutosVariantesFamiliaRoute
 }
 
@@ -386,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/sms-hook': {
+      id: '/api/public/sms-hook'
+      path: '/api/public/sms-hook'
+      fullPath: '/api/public/sms-hook'
+      preLoaderRoute: typeof ApiPublicSmsHookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produtos_/variantes/$familia': {
       id: '/produtos_/variantes/$familia'
       path: '/produtos/variantes/$familia'
@@ -414,6 +434,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContaPerfilRoute: ContaPerfilRoute,
   EncomendasIdRoute: EncomendasIdRoute,
   ProdutosIdRoute: ProdutosIdRoute,
+  ApiPublicSmsHookRoute: ApiPublicSmsHookRoute,
   ProdutosVariantesFamiliaRoute: ProdutosVariantesFamiliaRoute,
 }
 export const routeTree = rootRouteImport
