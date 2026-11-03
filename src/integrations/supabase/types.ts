@@ -137,6 +137,8 @@ export type Database = {
           created_at: string
           delivery_address: string
           delivery_fee: number
+          delivery_lat: number | null
+          delivery_lng: number | null
           discount: number
           id: string
           notes: string | null
@@ -156,6 +158,8 @@ export type Database = {
           created_at?: string
           delivery_address: string
           delivery_fee?: number
+          delivery_lat?: number | null
+          delivery_lng?: number | null
           discount?: number
           id?: string
           notes?: string | null
@@ -175,6 +179,8 @@ export type Database = {
           created_at?: string
           delivery_address?: string
           delivery_fee?: number
+          delivery_lat?: number | null
+          delivery_lng?: number | null
           discount?: number
           id?: string
           notes?: string | null
@@ -421,6 +427,17 @@ export type Database = {
           target_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: undefined
+      }
+      get_order_customers: {
+        Args: { order_ids: string[] }
+        Returns: {
+          account_phone: string
+          email: string
+          full_name: string
+          nuit: string
+          order_id: string
+          phone: string
+        }[]
       }
     }
     Enums: {
