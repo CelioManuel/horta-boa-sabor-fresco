@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronUp, MapPin, Package, Truck, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { CustomerCard, mapUrl, useOrderCustomers } from "@/components/pages/OrderCustomer";
 import { Empty, Page, PageTitle, StatusTimeline, mzn, paymentLabel, statusFlow, statusLabel } from "@/components/ui-bits";
 
-type O = { id: string; order_number: number; status: string; payment_status: string; payment_method: string; delivery_address: string; total: number; notes: string | null; created_at: string };
+type O = { id: string; order_number: number; status: string; payment_status: string; payment_method: string; delivery_address: string; total: number; notes: string | null; created_at: string; delivery_lat: number | null; delivery_lng: number | null };
 type Item = { order_id: string; product_name: string; unit_label: string; quantity: number };
 type Stock = { product_id: string; name: string; unit_label: string; quantity: number; rowId?: string | undefined };
 
@@ -18,10 +19,10 @@ export function OperatorPanel({ isAdmin }: { isAdmin: boolean }) {
   const [msg, setMsg] = useState("");
 
   const load = async (id: string) => {
-    let q = supabase.from("orders").select("id,order_number,status,payment_status,payment_method,delivery_address,total,notes,created_at").order("created_at", { ascending: false }).limit(200);
+    let q = supabase.from("orders").select("id,order_number,status,payment_status,payment_method,delivery_address,total,notes,created_at,delivery_lat,delivery_lng").order("created_at", { ascending: false }).limit(200);
     if (!isAdmin) q = q.eq("operator_id", id);
     const { data } = await q;
-    const list = (data ?? []).map((o) => ({ ...o, total: Number(o.total) }));
+    const list = (data ?? []).map((o) => ({ ...o, total: Number(o.total), delivery_lat: o.delivery_lat == null ? null : Number(o.delivery_lat), delivery_lng: o.delivery_lng == null ? null : Number(o.delivery_lng) }));
     setOrders(list);
     if (list.length) { const { data: it } = await supabase.from("order_items").select("order_id,product_name,unit_label,quantity").in("order_id", list.map((o) => o.id)); setItems((it ?? []).map((i) => ({ ...i, quantity: Number(i.quantity) }))); }
   };
@@ -50,6 +51,7 @@ export function OperatorPanel({ isAdmin }: { isAdmin: boolean }) {
   const today = new Date().toDateString();
   const stats: Array<[string, number, typeof Package]> = [["Para preparar", orders.filter((o) => o.status === "received" || o.status === "preparing").length, Package], ["A caminho", orders.filter((o) => o.status === "on_the_way" || o.status === "almost_there").length, Truck], ["Entregues hoje", orders.filter((o) => o.status === "delivered" && new Date(o.created_at).toDateString() === today).length, Check], ["Por cobrar", orders.filter((o) => o.payment_status !== "paid" && o.status !== "cancelled").length, Wallet]];
   const list = tab === "active" ? active : done;
+  const customers = useOrderCustomers(orders.map((o) => o.id));
 
   return <Page wide>
     <PageTitle title="Painel do operador" subtitle={isAdmin ? "Vista de administrador: todas as encomendas." : "Prepare e entregue as encomendas atribuídas a si."} />
@@ -59,9 +61,9 @@ export function OperatorPanel({ isAdmin }: { isAdmin: boolean }) {
     {tab !== "stock" && <div className="mt-5 space-y-3">{list.length === 0 && <Empty title="Sem encomendas" text={tab === "active" ? "Não há encomendas por tratar neste momento." : "Ainda não há encomendas concluídas."} />}{list.map((o) => {
       const its = items.filter((i) => i.order_id === o.id); const next = statusFlow[statusFlow.indexOf(o.status as (typeof statusFlow)[number]) + 1];
       return <article key={o.id} className="rounded-lg border border-border bg-card p-4">
-        <button className="flex w-full items-start justify-between gap-3 text-left" onClick={() => setOpen(open === o.id ? null : o.id)}><div><span className="text-xs text-muted-foreground">#{o.order_number} · {new Date(o.created_at).toLocaleString("pt-MZ")}</span><h3 className="font-display text-xl">{its.length} artigos · {mzn(o.total)}</h3><small className="text-muted-foreground"><MapPin className="mr-1 inline h-3.5 w-3.5" />{o.delivery_address}</small></div><span className="flex items-center gap-2"><span className="rounded-full bg-harvest/20 px-3 py-1 text-xs font-bold text-harvest-deep">{statusLabel[o.status]}</span>{open === o.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span></button>
-        {open === o.id && <div className="mt-4 space-y-4 border-t border-border pt-4"><StatusTimeline status={o.status} /><ul className="space-y-1 text-sm">{its.map((i, k) => <li key={k}>{i.quantity} × {i.product_name} <small className="text-muted-foreground">({i.unit_label})</small></li>)}</ul>{o.notes && <p className="text-sm text-muted-foreground">Nota: {o.notes}</p>}<p className="text-sm">Pagamento: <strong>{paymentLabel[o.payment_method]}</strong> · {o.payment_status === "paid" ? "Pago" : "Pendente"}</p></div>}
-        {o.status !== "cancelled" && <div className="mt-4 flex flex-wrap gap-2">{next && <Button size="sm" onClick={() => void advance(o)}><Check /> Passar a “{statusLabel[next]}”</Button>}{o.payment_status !== "paid" && <Button size="sm" variant="outline" onClick={() => void markPaid(o)}><Wallet /> Confirmar pagamento</Button>}<Button size="sm" variant="ghost" asChild><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.delivery_address)}`} target="_blank" rel="noreferrer"><MapPin /> Mapa</a></Button></div>}
+        <button className="flex w-full items-start justify-between gap-3 text-left" onClick={() => setOpen(open === o.id ? null : o.id)}><div><span className="text-xs text-muted-foreground">#{o.order_number} · {new Date(o.created_at).toLocaleString("pt-MZ")}</span><h3 className="font-display text-xl">{its.length} artigos · {mzn(o.total)}</h3>{customers[o.id] && <small className="block font-semibold">{customers[o.id]?.full_name || "Cliente"} · {customers[o.id]?.phone || customers[o.id]?.account_phone || customers[o.id]?.email}</small>}<small className="text-muted-foreground"><MapPin className="mr-1 inline h-3.5 w-3.5" />{o.delivery_address}</small></div><span className="flex items-center gap-2"><span className="rounded-full bg-harvest/20 px-3 py-1 text-xs font-bold text-harvest-deep">{statusLabel[o.status]}</span>{open === o.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span></button>
+        {open === o.id && <div className="mt-4 space-y-4 border-t border-border pt-4"><CustomerCard c={customers[o.id]} address={o.delivery_address} lat={o.delivery_lat} lng={o.delivery_lng} /><StatusTimeline status={o.status} /><ul className="space-y-1 text-sm">{its.map((i, k) => <li key={k}>{i.quantity} × {i.product_name} <small className="text-muted-foreground">({i.unit_label})</small></li>)}</ul>{o.notes && <p className="text-sm text-muted-foreground">Nota: {o.notes}</p>}<p className="text-sm">Pagamento: <strong>{paymentLabel[o.payment_method]}</strong> · {o.payment_status === "paid" ? "Pago" : "Pendente"}</p></div>}
+        {o.status !== "cancelled" && <div className="mt-4 flex flex-wrap gap-2">{next && <Button size="sm" onClick={() => void advance(o)}><Check /> Passar a “{statusLabel[next]}”</Button>}{o.payment_status !== "paid" && <Button size="sm" variant="outline" onClick={() => void markPaid(o)}><Wallet /> Confirmar pagamento</Button>}<Button size="sm" variant="ghost" asChild><a href={mapUrl(o.delivery_address, o.delivery_lat, o.delivery_lng)} target="_blank" rel="noreferrer"><MapPin /> Mapa</a></Button></div>}
       </article>;
     })}</div>}
     {tab === "stock" && <div className="mt-5 overflow-hidden rounded-lg border border-border bg-card">{stock.length === 0 && <p className="p-4 text-sm text-muted-foreground">Não há produtos visíveis na loja.</p>}{stock.map((s) => <div key={s.product_id} className="flex items-center gap-3 border-b border-border p-3 last:border-0"><div className="min-w-0 flex-1"><strong className="block truncate text-sm">{s.name}</strong><small className="text-muted-foreground">{s.unit_label}</small></div><Button size="sm" variant="outline" onClick={() => void saveStock(s, s.quantity - 1)}>−</Button><input type="number" className="h-9 w-20 rounded-md border border-input bg-background px-2 text-sm" defaultValue={s.quantity} key={s.quantity} onBlur={(e) => Number(e.target.value) !== s.quantity && void saveStock(s, Number(e.target.value))} /><Button size="sm" variant="outline" onClick={() => void saveStock(s, s.quantity + 1)}>+</Button></div>)}</div>}

@@ -156,6 +156,9 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   const [addrId, setAddrId] = useState("");
   const [manual, setManual] = useState("");
   const [notes, setNotes] = useState("");
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoMsg, setGeoMsg] = useState("");
+  const locate = () => { if (!navigator.geolocation) { setGeoMsg("O seu dispositivo não permite localização."); return; } setGeoMsg("A obter localização…"); navigator.geolocation.getCurrentPosition((p) => { setGeo({ lat: p.coords.latitude, lng: p.coords.longitude }); setGeoMsg("Localização GPS adicionada."); }, () => setGeoMsg("Não foi possível obter a localização. Autorize o acesso no navegador."), { enableHighAccuracy: true, timeout: 15000 }); };
   const [store, setStore] = useState<{ id: string; fee: number } | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -168,12 +171,12 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { await navigate({ to: "/auth" }); return; }
     const chosen = addresses.find((a) => a.id === addrId);
-    const address = chosen ? `${chosen.address}, ${chosen.city}` : manual.trim();
+    const address = (chosen ? `${chosen.address}, ${chosen.city}` : manual.trim()) || (geo ? "Localização GPS partilhada" : "");
     if (!address) { setNotice("Indique o endereço de entrega."); return; }
     const outOfStock = lines.find((l) => l.stock <= 0);
     if (outOfStock) { setNotice(`${outOfStock.name} está fora de stock.`); return; }
     setBusy(true);
-    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: store?.id ?? null, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null }).select("id").single();
+    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: store?.id ?? null, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null, delivery_lat: geo?.lat ?? null, delivery_lng: geo?.lng ?? null }).select("id").single();
     if (error || !order) { setBusy(false); setNotice("Não foi possível criar a encomenda. Tente novamente."); return; }
     const { error: itemsError } = await supabase.from("order_items").insert(lines.map((line) => ({ order_id: order.id, product_id: line.id, product_name: line.name, unit_label: line.unitLabel, quantity: line.quantity * line.minQuantity, unit_price: line.price })));
     setBusy(false);
@@ -189,6 +192,8 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
     <h3 className="mt-6 text-sm font-bold">Endereço de entrega</h3>
     {signedIn && addresses.length > 0 ? <select className={`${fieldCls} mt-2`} value={addrId} onChange={(e) => setAddrId(e.target.value)}>{addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {a.address}</option>)}<option value="">Outro endereço…</option></select> : null}
     {(!addrId || addresses.length === 0) && <input className={`${fieldCls} mt-2`} placeholder="Bairro, rua, número, referência" value={manual} onChange={(e) => setManual(e.target.value)} />}
+    <Button type="button" variant="outline" size="sm" className="mt-2 w-full" onClick={locate}><MapPin /> {geo ? "Atualizar a minha localização" : "Usar a minha localização atual"}</Button>
+    {geoMsg && <p className="mt-1 text-xs text-muted-foreground">{geoMsg}</p>}
     {signedIn && <Link to="/conta/enderecos" className="mt-1 inline-block text-xs font-semibold text-primary">Gerir endereços</Link>}
     <textarea className="mt-3 w-full rounded-md border border-input bg-background p-3 text-sm" rows={2} placeholder="Nota para o operador (opcional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
     <h3 className="mt-4 text-sm font-bold">Método de pagamento</h3>

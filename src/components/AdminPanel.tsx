@@ -5,12 +5,13 @@ import { productImageKeys } from "@/lib/product-images";
 import { AdminDashboard, PromotionsAdmin, StoresAdmin } from "@/components/pages/AdminExtras";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { CustomerCard, useOrderCustomers } from "@/components/pages/OrderCustomer";
 import { UsersAdmin } from "@/components/pages/UsersAdmin";
 
 type Role = "admin" | "operator" | "customer";
 type Product = { id: string; sku?: string | null; name: string; category: string; price: number; unit_label: string; min_quantity: number; stock: number; image_key: string; description: string; is_active: boolean; is_featured: boolean };
 type Person = { id: string; full_name: string; phone: string; roles: Role[] };
-type Order = { id: string; order_number: number; status: string; total: number; payment_status: string; operator_id: string | null; created_at: string };
+type Order = { id: string; order_number: number; status: string; total: number; payment_status: string; operator_id: string | null; created_at: string; delivery_address: string; delivery_lat: number | null; delivery_lng: number | null };
 
 const emptyProduct: Omit<Product, "id"> = { name: "", category: "Legumes", price: 0, unit_label: "saco de 10 kg", min_quantity: 1, stock: 0, image_key: "generic", description: "", is_active: true, is_featured: false };
 const statuses: Array<[string, string]> = [["received", "Recebida"], ["preparing", "Em preparação"], ["on_the_way", "A caminho"], ["almost_there", "Quase a chegar"], ["delivered", "Entregue"], ["cancelled", "Cancelada"]];
@@ -37,7 +38,7 @@ export function AdminPanel() {
     const [{ data: prof }, { data: roles }] = await Promise.all([supabase.from("profiles").select("id,full_name,phone").order("created_at"), supabase.from("user_roles").select("user_id,role")]);
     setPeople((prof ?? []).map((p) => ({ ...p, roles: (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role as Role) })));
   };
-  const loadOrders = async () => { const { data } = await supabase.from("orders").select("id,order_number,status,total,payment_status,operator_id,created_at").order("created_at", { ascending: false }).limit(100); setOrders((data ?? []).map((o) => ({ ...o, total: Number(o.total) }))); };
+  const loadOrders = async () => { const { data } = await supabase.from("orders").select("id,order_number,status,total,payment_status,operator_id,created_at,delivery_address,delivery_lat,delivery_lng").order("created_at", { ascending: false }).limit(100); setOrders((data ?? []).map((o) => ({ ...o, total: Number(o.total), delivery_lat: o.delivery_lat == null ? null : Number(o.delivery_lat), delivery_lng: o.delivery_lng == null ? null : Number(o.delivery_lng) }))); };
   useEffect(() => { void loadProducts(); void loadPeople(); void loadOrders(); }, []);
   const flash = (t: string) => { setMsg(t); setTimeout(() => setMsg(""), 2500); };
 
@@ -61,6 +62,8 @@ export function AdminPanel() {
     if (error) flash("Erro: " + error.message); void loadOrders();
   };
 
+  const customers = useOrderCustomers(orders.map((o) => o.id));
+  const [openOrder, setOpenOrder] = useState<string | null>(null);
   const filtered = products.filter((p) => (onlyVisible === "all" || p.is_active === (onlyVisible === "on")) && `${p.name} ${p.sku ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const operators = people.filter((p) => p.roles.includes("operator"));
   const inStock = products.filter((p) => p.stock > 0);
@@ -116,6 +119,8 @@ export function AdminPanel() {
       <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={o.status} onChange={(e) => void updateOrder(o.id, { status: e.target.value })}>{statuses.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={o.operator_id ?? ""} onChange={(e) => void updateOrder(o.id, { operator_id: e.target.value || null })}><option value="">Sem operador</option>{operators.map((p) => <option key={p.id} value={p.id}>{p.full_name || p.id.slice(0, 8)}</option>)}</select>
       <Button size="sm" variant={o.payment_status === "paid" ? "default" : "outline"} onClick={() => void updateOrder(o.id, { payment_status: o.payment_status === "paid" ? "pending" : "paid" })}>{o.payment_status === "paid" ? "Pago" : "Marcar pago"}</Button>
+      <Button size="sm" variant="ghost" onClick={() => setOpenOrder(openOrder === o.id ? null : o.id)}><Users /> Cliente</Button>
+      {openOrder === o.id && <div className="w-full"><CustomerCard c={customers[o.id]} address={o.delivery_address} lat={o.delivery_lat} lng={o.delivery_lng} /></div>}
     </div>)}</section>}
   </main>;
 }
