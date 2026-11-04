@@ -15,12 +15,22 @@ export const notifyNewOrder = createServerFn({ method: "POST" })
     const { data: o } = await context.supabase.from("orders").select("id,order_number,total,payment_method,delivery_address,notes,user_id").eq("id", data.orderId).maybeSingle();
     if (!o || o.user_id !== context.userId) throw new Error("Encomenda não encontrada");
     const { data: items } = await context.supabase.from("order_items").select("product_name,quantity,unit_label").eq("order_id", o.id);
+    const { data: profile } = await context.supabase.from("profiles").select("full_name,phone").eq("id", o.user_id).maybeSingle();
+    const customer = profile?.full_name ?? "Cliente";
+    const customerPhone = profile?.phone ?? "-";
     const list = (items ?? []).map((i) => `- ${i.product_name}: ${i.quantity} ${i.unit_label}`).join("\n");
     const ref = o.order_number ?? o.id.slice(0, 8);
     const { sendSms, sendEmail } = await import("@/lib/notify.server");
+    const smsBody = [
+      `Horta Boa: nova encomenda #${ref}`,
+      `Cliente: ${customer} (${customerPhone})`,
+      `Total: ${Number(o.total).toFixed(2)} MZN - ${o.payment_method}`,
+      `Entrega: ${o.delivery_address}`,
+      `Produtos: ${(items ?? []).map((i) => `${i.product_name} x${i.quantity} ${i.unit_label}`).join(", ")}`,
+    ].join("\n");
     const results = await Promise.allSettled([
-      sendSms([STAFF_PHONE], `Horta Boa: nova encomenda #${ref} - ${Number(o.total).toFixed(2)} MZN (${o.payment_method}). Entrega: ${o.delivery_address}`),
-      sendEmail(STAFF_EMAIL, `Nova encomenda #${ref}`, `Nova encomenda #${ref}\n\nTotal: ${Number(o.total).toFixed(2)} MZN\nPagamento: ${o.payment_method}\nEntrega: ${o.delivery_address}\nNota: ${o.notes ?? "-"}\n\nProdutos:\n${list}`),
+      sendSms([STAFF_PHONE], smsBody),
+      sendEmail(STAFF_EMAIL, `Nova encomenda #${ref}`, `Nova encomenda #${ref}\n\nCliente: ${customer}\nTelemóvel: ${customerPhone}\nTotal: ${Number(o.total).toFixed(2)} MZN\nPagamento: ${o.payment_method}\nEntrega: ${o.delivery_address}\nNota: ${o.notes ?? "-"}\n\nProdutos:\n${list}`),
     ]);
     results.forEach((r) => r.status === "rejected" && console.error("Notificação falhou:", r.reason));
     return { ok: results.every((r) => r.status === "fulfilled") };
