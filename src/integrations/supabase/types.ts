@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          category: string
+          created_at: string
+          details: Json
+          entity_id: string | null
+          id: string
+          summary: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          category: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          id?: string
+          summary?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          category?: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          id?: string
+          summary?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -428,6 +461,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -451,6 +505,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_order: { Args: { target_order: string }; Returns: undefined }
       admin_save_profile_roles: {
         Args: {
           target_id: string
@@ -459,6 +514,10 @@ export type Database = {
           target_phone: string
           target_roles: Database["public"]["Enums"]["app_role"][]
         }
+        Returns: undefined
+      }
+      admin_set_permissions: {
+        Args: { perms: string[]; target_id: string }
         Returns: undefined
       }
       get_order_customers: {
@@ -471,6 +530,17 @@ export type Database = {
           order_id: string
           phone: string
         }[]
+      }
+      log_sign_in: { Args: never; Returns: undefined }
+      write_audit: {
+        Args: {
+          _action: string
+          _category: string
+          _details: Json
+          _entity: string
+          _summary: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

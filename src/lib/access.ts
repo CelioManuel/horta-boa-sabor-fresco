@@ -15,3 +15,20 @@ export function sessionDestination(role: AppRole) {
 export function canOpenPage(role: AppRole | null, pathname: string) {
   return !operatorOnly(role) || pathname.replace(/\/$/, "") === "/operador";
 }
+export const permissionKeys = ["orders", "products", "users", "reports"] as const;
+export type Permission = (typeof permissionKeys)[number];
+export const permissionLabels: Record<Permission, string> = {
+  orders: "Ver e gerir encomendas",
+  products: "Gerir produtos e preços",
+  users: "Gerir utilizadores",
+  reports: "Ver relatórios e histórico",
+};
+
+/** Administrators hold every permission; others only what was granted. */
+export function hasPermission(role: AppRole | null, granted: readonly string[], permission: Permission) {
+  return role === "admin" || granted.includes(permission);
+}
+
+export function canOpenManagement(role: AppRole | null, granted: readonly string[]) {
+  return role === "admin" || permissionKeys.some((p) => granted.includes(p));
+}

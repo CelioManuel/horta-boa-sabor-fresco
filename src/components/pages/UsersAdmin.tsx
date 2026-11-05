@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/PasswordInput";
 import { fieldCls } from "@/components/ui-bits";
 import { listAccounts, saveAccount, createAccount } from "@/lib/admin-users.functions";
+import { permissionKeys, permissionLabels, type Permission } from "@/lib/access";
+import { useAccess } from "@/components/AccessProvider";
 
 type Role = "customer" | "operator" | "admin";
-type Account = { id: string; email: string; full_name: string; phone: string; nuit: string; roles: Role[]; confirmed: boolean };
-type Edit = { id?: string; email: string; full_name: string; phone: string; nuit: string; roles: Role[]; password: string; confirm: string };
+type Account = { id: string; email: string; full_name: string; phone: string; nuit: string; roles: Role[]; permissions: string[]; confirmed: boolean };
+type Edit = { id?: string; email: string; full_name: string; phone: string; nuit: string; roles: Role[]; permissions: string[]; password: string; confirm: string };
 const labels: Record<Role, string> = { customer: "Cliente", operator: "Operador", admin: "Administrador" };
-const empty: Edit = { email: "", full_name: "", phone: "", nuit: "", roles: ["customer"], password: "", confirm: "" };
+const empty: Edit = { email: "", full_name: "", phone: "", nuit: "", roles: ["customer"], permissions: [], password: "", confirm: "" };
 
 export function UsersAdmin({ onSaved }: { onSaved: () => void }) {
+  const isAdmin = useAccess().role === "admin";
   const fetchAccounts = useServerFn(listAccounts);
   const create = useServerFn(createAccount);
   const save = useServerFn(saveAccount);
@@ -36,7 +39,7 @@ export function UsersAdmin({ onSaved }: { onSaved: () => void }) {
     if (!editing.id && editing.password !== editing.confirm) return setMsg("As palavras-passe não coincidem.");
     setBusy(true); setMsg("");
     try {
-      const fields = { full_name: editing.full_name, phone: editing.phone, nuit: editing.nuit, roles: editing.roles };
+      const fields = { full_name: editing.full_name, phone: editing.phone, nuit: editing.nuit, roles: editing.roles, permissions: editing.permissions as Permission[] };
       if (editing.id) {
         await save({ data: { ...fields, id: editing.id } });
         setMsg("Perfil e permissões guardados.");
@@ -60,9 +63,10 @@ export function UsersAdmin({ onSaved }: { onSaved: () => void }) {
       <label className="text-sm">NUIT<input className={fieldCls} value={editing.nuit} onChange={(e) => setEditing({ ...editing, nuit: e.target.value })} /></label>
       {!editing.id && <><label className="text-sm">Palavra-passe<PasswordInput required minLength={8} autoComplete="new-password" value={editing.password} onChange={(e) => setEditing({ ...editing, password: e.target.value })} /></label><label className="text-sm">Confirmar palavra-passe<PasswordInput required minLength={8} autoComplete="new-password" value={editing.confirm} onChange={(e) => setEditing({ ...editing, confirm: e.target.value })} /></label></>}
       <fieldset className="sm:col-span-2"><legend className="mb-2 text-sm font-semibold">Permissões</legend><div className="flex flex-wrap gap-5">{(["customer", "operator", "admin"] as const).map((r) => <label key={r} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.roles.includes(r)} onChange={(e) => setEditing({ ...editing, roles: e.target.checked ? [...editing.roles, r] : editing.roles.filter((v) => v !== r) })} />{labels[r]}</label>)}</div></fieldset>
+      {isAdmin && !editing.roles.includes("admin") && <fieldset className="sm:col-span-2"><legend className="mb-1 text-sm font-semibold">Acesso à gestão</legend><p className="mb-2 text-xs text-muted-foreground">Escolha o que esta pessoa pode fazer na área de gestão. Administradores têm tudo.</p><div className="grid gap-2 sm:grid-cols-2">{permissionKeys.map((p) => <label key={p} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.permissions.includes(p)} onChange={(e) => setEditing({ ...editing, permissions: e.target.checked ? [...editing.permissions, p] : editing.permissions.filter((v) => v !== p) })} />{permissionLabels[p]}</label>)}</div></fieldset>}
       <div className="flex gap-2 sm:col-span-2"><Button disabled={busy} type="submit"><Save />{busy ? "A guardar…" : "Guardar"}</Button><Button type="button" variant="outline" disabled={busy} onClick={() => setEditing(null)}><X /> Cancelar</Button></div>
     </form>}
     <div className="flex flex-wrap gap-3"><label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input px-3"><Search className="h-4 w-4 shrink-0 text-muted-foreground" /><input aria-label="Pesquisar utilizadores" placeholder="Nome, email ou telefone" className="min-w-0 flex-1 bg-transparent text-sm outline-none" value={query} onChange={(e) => setQuery(e.target.value)} /></label><select aria-label="Filtrar permissões" className={`${fieldCls} w-auto`} value={role} onChange={(e) => setRole(e.target.value)}><option value="all">Todos os perfis</option>{Object.entries(labels).map(([r, label]) => <option key={r} value={r}>{label}</option>)}</select></div>
-    {loading ? <p className="py-6 text-sm text-muted-foreground">A carregar utilizadores…</p> : <div className="divide-y divide-border">{filtered.length === 0 && <p className="py-6 text-sm text-muted-foreground">Nenhum utilizador encontrado.</p>}{filtered.map((a) => <div key={a.id} className="flex items-center gap-3 py-4"><div className="min-w-0 flex-1"><strong className="block text-sm">{a.full_name || "Sem nome"}</strong><span className="block break-all text-sm text-muted-foreground">{a.email || a.phone}</span><span className="text-xs text-muted-foreground">{a.roles.map((r) => labels[r]).join(" · ") || "Sem permissões"}{!a.confirmed && " · Confirmação pendente"}</span></div><Button size="icon" variant="outline" aria-label={`Editar perfil de ${a.full_name || a.email}`} title="Editar perfil" onClick={() => { setEditing({ ...a, password: "", confirm: "" }); setMsg(""); }}><Pencil /></Button></div>)}</div>}
+    {loading ? <p className="py-6 text-sm text-muted-foreground">A carregar utilizadores…</p> : <div className="divide-y divide-border">{filtered.length === 0 && <p className="py-6 text-sm text-muted-foreground">Nenhum utilizador encontrado.</p>}{filtered.map((a) => <div key={a.id} className="flex items-center gap-3 py-4"><div className="min-w-0 flex-1"><strong className="block text-sm">{a.full_name || "Sem nome"}</strong><span className="block break-all text-sm text-muted-foreground">{a.email || a.phone}</span><span className="text-xs text-muted-foreground">{a.roles.map((r) => labels[r]).join(" · ") || "Sem permissões"}{a.permissions.length > 0 && !a.roles.includes("admin") && ` · Acesso: ${a.permissions.map((p) => permissionLabels[p as Permission]).join(", ")}`}{!a.confirmed && " · Confirmação pendente"}</span></div><Button size="icon" variant="outline" aria-label={`Editar perfil de ${a.full_name || a.email}`} title="Editar perfil" onClick={() => { setEditing({ ...a, password: "", confirm: "" }); setMsg(""); }}><Pencil /></Button></div>)}</div>}
   </section>;
 }

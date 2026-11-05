@@ -17,3 +17,5 @@
 - AccessProvider owns session identity and the single auth-change subscriber, blocks page rendering until roles load and redirects operator-only identities globally; database authorization remains enforced by existing RLS and server checks.
 - Account creation and account listing use authenticated administrator server functions; profile/role updates use a single administrator-checked database function to keep permissions atomic.
 - Administrator-created email accounts remain unconfirmed until email verification; email delivery failure keeps the account pending and must not roll back a valid profile.
+- Management access is role `admin` (everything) or granted rows in `user_permissions` checked by `private.has_permission`; UI tabs and RLS both use the same permission keys so hidden tabs are also blocked in the database.
+- The activity history (`audit_logs`) is written only by database triggers and the `log_sign_in` function, so app code never inserts log rows directly.

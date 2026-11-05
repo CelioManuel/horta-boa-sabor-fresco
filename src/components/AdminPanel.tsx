@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Search, Store, Tag, Package, Pencil, Plus, Save, Sprout, Trash2, Users, X } from "lucide-react";
+import { BarChart3, History, Search, Store, Tag, Package, Pencil, Plus, Save, Sprout, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { productImageKeys } from "@/lib/product-images";
 import { AdminDashboard, PromotionsAdmin, StoresAdmin } from "@/components/pages/AdminExtras";
@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { CustomerCard, useOrderCustomers } from "@/components/pages/OrderCustomer";
 import { UsersAdmin } from "@/components/pages/UsersAdmin";
 import { DeletionRequestsAdmin } from "@/components/pages/AccountDeletion";
+import { AuditLog } from "@/components/pages/AuditLog";
+import { useAccess } from "@/components/AccessProvider";
+import { hasPermission, type Permission } from "@/lib/access";
 
 type Role = "admin" | "operator" | "customer";
 type Product = { id: string; sku?: string | null; name: string; category: string; price: number; unit_label: string; min_quantity: number; stock: number; image_key: string; description: string; is_active: boolean; is_featured: boolean };
@@ -25,7 +28,10 @@ export function stockState(stock: number) {
 }
 
 export function AdminPanel() {
-  const [tab, setTab] = useState<"dashboard" | "products" | "stock" | "users" | "deletions" | "orders" | "stores" | "promos">("dashboard");
+  const { role, permissions } = useAccess();
+  const can = (p: Permission) => hasPermission(role, permissions, p);
+  const isAdmin = role === "admin";
+  const [tab, setTab] = useState<"dashboard" | "products" | "stock" | "users" | "deletions" | "orders" | "stores" | "promos" | "history">(can("reports") ? "dashboard" : can("orders") ? "orders" : can("products") ? "products" : "users");
   const [products, setProducts] = useState<Product[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -69,7 +75,15 @@ export function AdminPanel() {
   const operators = people.filter((p) => p.roles.includes("operator"));
   const inStock = products.filter((p) => p.stock > 0);
   const out = products.filter((p) => p.stock <= 0);
-  const tabs: Array<[typeof tab, string, typeof Sprout]> = [["dashboard", "Painel e relatórios", BarChart3], ["products", "Produtos", Sprout], ["stock", "Stock", Package], ["users", "Utilizadores e operadores", Users], ["deletions", "Pedidos de eliminação", Users], ["orders", "Encomendas", Package], ["stores", "Lojas e entregas", Store], ["promos", "Promoções", Tag]];
+  const allTabs: Array<[typeof tab, string, typeof Sprout, boolean]> = [["dashboard", "Painel e relatórios", BarChart3, can("reports")], ["products", "Produtos", Sprout, can("products")], ["stock", "Stock", Package, can("products")], ["users", "Utilizadores e operadores", Users, can("users")], ["deletions", "Pedidos de eliminação", Users, isAdmin], ["orders", "Encomendas", Package, can("orders")], ["stores", "Lojas e entregas", Store, can("products")], ["promos", "Promoções", Tag, can("products")], ["history", "Histórico", History, can("reports")]];
+  const tabs = allTabs.filter((t) => t[3]);
+  const deleteOrder = async (o: Order) => {
+    if (!confirm(`Eliminar de vez a encomenda #${o.order_number}? Esta ação não pode ser desfeita.`)) return;
+    if (prompt(`Para confirmar, escreva o número da encomenda (${o.order_number}):`)?.trim() !== String(o.order_number)) return flash("Eliminação cancelada.");
+    const { error } = await supabase.rpc("admin_delete_order", { target_order: o.id });
+    if (error) flash("Não foi possível eliminar a encomenda."); else flash(`Encomenda #${o.order_number} eliminada.`);
+    void loadOrders();
+  };
   const input = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
 
   return <main className="mx-auto max-w-7xl px-4 pb-28 pt-8 sm:px-6">
@@ -82,6 +96,7 @@ export function AdminPanel() {
     {msg && <p className="mt-4 rounded-md bg-leaf-soft px-3 py-2 text-sm text-primary">{msg}</p>}
 
     {tab === "dashboard" && <AdminDashboard />}
+    {tab === "history" && <AuditLog />}
     {tab === "stores" && <StoresAdmin />}
     {tab === "promos" && <PromotionsAdmin />}
     {tab === "products" && <section className="mt-5">
@@ -114,7 +129,7 @@ export function AdminPanel() {
     </section>}
 
     {tab === "deletions" && <DeletionRequestsAdmin />}
-    {tab === "users" && <UsersAdmin onSaved={() => void loadPeople()} />}
+    {tab === "users" && can("users") && <UsersAdmin onSaved={() => void loadPeople()} />}
 
     {tab === "orders" && <section className="mt-5 overflow-hidden rounded-lg border border-border bg-card">{orders.length === 0 && <p className="p-4 text-sm text-muted-foreground">Ainda não há encomendas.</p>}{orders.map((o) => <div key={o.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">
       <div className="min-w-32 flex-1"><Link to="/encomendas/$id" params={{ id: o.id }} className="block text-sm font-bold underline-offset-2 hover:underline">#{o.order_number}</Link><small className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString("pt-MZ")} · {o.total.toLocaleString("pt-MZ")} MZN</small></div>
@@ -122,6 +137,7 @@ export function AdminPanel() {
       <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={o.operator_id ?? ""} onChange={(e) => void updateOrder(o.id, { operator_id: e.target.value || null })}><option value="">Sem operador</option>{operators.map((p) => <option key={p.id} value={p.id}>{p.full_name || p.id.slice(0, 8)}</option>)}</select>
       <Button size="sm" variant={o.payment_status === "paid" ? "default" : "outline"} onClick={() => void updateOrder(o.id, { payment_status: o.payment_status === "paid" ? "pending" : "paid" })}>{o.payment_status === "paid" ? "Pago" : "Marcar pago"}</Button>
       <Button size="sm" variant="ghost" onClick={() => setOpenOrder(openOrder === o.id ? null : o.id)}><Users /> Cliente</Button>
+      {isAdmin && <Button size="icon" variant="outline" aria-label={`Eliminar encomenda #${o.order_number}`} title="Eliminar encomenda" onClick={() => void deleteOrder(o)}><Trash2 /></Button>}
       {openOrder === o.id && <div className="w-full"><CustomerCard c={customers[o.id]} address={o.delivery_address} lat={o.delivery_lat} lng={o.delivery_lng} /></div>}
     </div>)}</section>}
   </main>;

@@ -5,7 +5,7 @@ import { VariantPhoto } from "@/components/VariantPhoto";
 import { filterCatalogue, homeCatalogue, produceFamily } from "@/lib/catalog";
 import { loadVisibleProducts } from "@/lib/catalog-data";
 import { useAccess } from "@/components/AccessProvider";
-import { operatorOnly, type AppRole } from "@/lib/access";
+import { canOpenManagement, operatorOnly, type AppRole } from "@/lib/access";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -42,7 +42,7 @@ const productPositions: Record<string, string> = { tomate: "product-tomate", bat
 export function HortaBoaApp({ view, children, catalogMode = "home", family = "" }: { view: View; children?: React.ReactNode; catalogMode?: "home" | "products"; family?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { email: userEmail, role, ready: identityReady } = useAccess();
+  const { email: userEmail, role, permissions, ready: identityReady } = useAccess();
   const isOperator = operatorOnly(role);
   const { lines, count, subtotal, add, change, remove, clear } = useStore();
   const [products, setProducts] = useState<DbProduct[]>([]);
@@ -100,9 +100,9 @@ export function HortaBoaApp({ view, children, catalogMode = "home", family = "" 
       {view === "catalog" && <Catalog mode={catalogMode} family={family} products={visible} allProducts={catalogue} categories={categories} category={category} setCategory={setCategory} query={query} setQuery={setQuery} add={(product) => { add(asCartProduct(product)); setNotice(`${product.name} adicionado ao carrinho`); }} />}
       {view === "cart" && <Cart lines={lines} subtotal={subtotal} change={change} remove={remove} clear={clear} />}
       {view === "orders" && <Orders orders={orders} signedIn={Boolean(userEmail)} />}
-      {view === "account" && <Account email={userEmail} role={role} signOut={signOut} />}
+      {view === "account" && <Account email={userEmail} role={role} manage={canOpenManagement(role, permissions)} signOut={signOut} />}
       {view === "page" && children}
-      {view === "admin" && (identityReady && role === "admin" ? <AdminPanel /> : <RestrictedArea ready={identityReady} signedIn={Boolean(userEmail)} />)}
+      {view === "admin" && (identityReady && canOpenManagement(role, permissions) ? <AdminPanel /> : <RestrictedArea ready={identityReady} signedIn={Boolean(userEmail)} />)}
       {view === "operator" && (identityReady && (role === "operator" || role === "admin") ? <OperatorPanel isAdmin={role === "admin"} /> : <RestrictedArea ready={identityReady} signedIn={Boolean(userEmail)} />)}
 
       {notice && view !== "cart" && <button className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-md bg-foreground px-4 py-3 text-sm font-medium text-background shadow-xl" onClick={() => setNotice("")}>{notice}</button>}
@@ -206,10 +206,10 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
 function Orders({ orders, signedIn }: { orders: Order[]; signedIn: boolean }) { return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-5xl px-4 pb-28 pt-8 sm:px-6"><PageTitle title="Minhas encomendas" subtitle="Acompanhe cada compra, da preparação à entrega." />{!signedIn ? <Empty icon={CircleUserRound} title="Entre na sua conta" text="Inicie sessão para consultar as suas encomendas." action="Entrar" to="/auth" /> : orders.length === 0 ? <Empty icon={Package} title="Ainda não há encomendas" text="A sua próxima cesta fresca começa no catálogo." action="Comprar agora" to="/produtos" /> : <div className="space-y-4">{orders.map((order) => <Link key={order.id} to="/encomendas/$id" params={{ id: order.id }} className="block rounded-lg border border-border bg-card p-5 transition hover:border-primary"><div className="flex flex-wrap items-start justify-between gap-3"><div><span className="text-xs text-muted-foreground">Encomenda #{order.order_number}</span><h2 className="mt-1 font-display text-xl">{statusLabel[order.status] ?? order.status}</h2></div><span className="rounded-full bg-leaf-soft px-3 py-1 text-xs font-bold text-primary">{order.payment_status === "paid" ? "Pago" : "Pagamento pendente"}</span></div><div className="mt-5 grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-3"><span><Clock3 className="mr-2 inline h-4 w-4 text-muted-foreground" />{new Date(order.created_at).toLocaleDateString("pt-MZ")}</span><span className="truncate"><MapPin className="mr-2 inline h-4 w-4 text-muted-foreground" />{order.delivery_address}</span><strong className="sm:text-right">{mzn(order.total)}</strong></div></Link>)}</div>}</main>; }
 
 type AccountLink = "/conta/perfil" | "/conta/enderecos" | "/conta/notificacoes" | "/definicoes" | "/ajuda" | "/termos" | "/privacidade" | "/admin" | "/operador" | "/encomendas";
-function Account({ email, role, signOut }: { email: string | null; role: AppRole | null; signOut: () => void }) {
+function Account({ email, role, manage, signOut }: { email: string | null; role: AppRole | null; manage: boolean; signOut: () => void }) {
   const cards: Array<[typeof MapPin, string, string, AccountLink]> = [[CircleUserRound, "Perfil", "Nome, telefone e NUIT", "/conta/perfil"], [MapPin, "Endereços", "Gerir locais de entrega", "/conta/enderecos"], [Bell, "Notificações", "Atualizações das encomendas", "/conta/notificacoes"], [Package, "Encomendas", "Histórico e estado", "/encomendas"], [Settings, "Definições", "Palavra-passe e preferências", "/definicoes"], [Heart, "Ajuda", "Fale com a Horta Boa", "/ajuda"]];
   if (role === "operator" || role === "admin") cards.unshift([Truck, "Painel do operador", "Encomendas para entregar", "/operador"]);
-  if (role === "admin") cards.unshift([BarChart3, "Gestão da loja", "Produtos, stock, vendas e utilizadores", "/admin"]);
+  if (manage) cards.unshift([BarChart3, "Gestão da loja", "Produtos, stock, vendas e utilizadores", "/admin"]);
   return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-4xl px-4 pb-28 pt-8 sm:px-6"><PageTitle title="A sua conta" subtitle="Tudo o que precisa para gerir as suas compras." />{!email ? <Empty icon={CircleUserRound} title="Bem-vindo à Horta Boa" text="Entre ou crie uma conta para guardar endereços e acompanhar encomendas." action="Entrar ou registar" to="/auth" /> : <><section className="mb-6 flex items-center gap-4 rounded-lg bg-primary p-5 text-primary-foreground"><div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-foreground/15"><CircleUserRound /></div><div className="min-w-0"><span className="text-xs uppercase tracking-[.12em] text-primary-foreground/70">{role === "admin" ? "Administrador" : role === "operator" ? "Operador" : "Cliente Horta Boa"}</span><p className="truncate font-semibold">{email}</p></div></section><div className="grid gap-3 sm:grid-cols-2">{cards.map(([Icon, title, text, to]) => <Link key={title} to={to} className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 text-left hover:border-primary"><span className="flex h-10 w-10 items-center justify-center rounded-md bg-leaf-soft text-primary"><Icon /></span><span className="flex-1"><strong className="block">{title}</strong><small className="text-muted-foreground">{text}</small></span><ChevronRight className="h-4 w-4 text-muted-foreground" /></Link>)}</div><Button variant="outline" className="mt-6" onClick={() => void signOut()}><LogOut /> Terminar sessão</Button></>}<p className="mt-8 flex gap-4 text-xs text-muted-foreground"><Link to="/termos" className="hover:text-primary">Termos</Link><Link to="/privacidade" className="hover:text-primary">Privacidade</Link><Link to="/ajuda" className="hover:text-primary">Ajuda</Link></p></main>;
 }
 

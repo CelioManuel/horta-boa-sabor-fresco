@@ -3,12 +3,12 @@ import { Navigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { canOpenPage, primaryRole, type AppRole } from "@/lib/access";
 
-type Identity = { ready: boolean; email: string | null; role: AppRole | null; error: boolean };
-const AccessContext = createContext<Identity>({ ready: false, email: null, role: null, error: false });
+type Identity = { ready: boolean; email: string | null; role: AppRole | null; permissions: string[]; error: boolean };
+const AccessContext = createContext<Identity>({ ready: false, email: null, role: null, permissions: [], error: false });
 export const useAccess = () => useContext(AccessContext);
 
 export function AccessProvider({ children }: { children: ReactNode }) {
-  const [identity, setIdentity] = useState<Identity>({ ready: false, email: null, role: null, error: false });
+  const [identity, setIdentity] = useState<Identity>({ ready: false, email: null, role: null, permissions: [], error: false });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   useEffect(() => {
@@ -19,17 +19,24 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.getUser();
       if (!active || request !== version) return;
       if (!data.user) {
-        setIdentity({ ready: true, email: null, role: null, error: false });
+        setIdentity({ ready: true, email: null, role: null, permissions: [], error: false });
         return;
       }
-      const { data: rows, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      const [{ data: rows, error: roleError }, { data: perms }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+        supabase.from("user_permissions").select("permission").eq("user_id", data.user.id),
+      ]);
       if (!active || request !== version) return;
-      setIdentity({ ready: true, email: data.user.email || data.user.phone || null, role: roleError ? null : primaryRole((rows ?? []).map((row) => row.role)), error: Boolean(error || roleError) });
+      setIdentity({ ready: true, email: data.user.email || data.user.phone || null, role: roleError ? null : primaryRole((rows ?? []).map((row) => row.role)), permissions: (perms ?? []).map((p) => p.permission), error: Boolean(error || roleError) });
     };
     void refresh();
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        const key = `hb-signin-logged-${session.user.id}-${session.user.last_sign_in_at ?? ""}`;
+        if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, "1"); void supabase.rpc("log_sign_in"); }
+      }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      setIdentity({ ready: false, email: null, role: null, error: false });
+      setIdentity({ ready: false, email: null, role: null, permissions: [], error: false });
       setTimeout(() => { if (active) void refresh(); }, 0);
     });
     return () => { active = false; version++; listener.subscription.unsubscribe(); };
