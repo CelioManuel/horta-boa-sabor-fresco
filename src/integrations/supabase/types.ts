@@ -200,12 +200,14 @@ export type Database = {
       }
       orders: {
         Row: {
+          cancelled_by_customer: boolean
           created_at: string
           delivery_address: string
           delivery_fee: number
           delivery_lat: number | null
           delivery_lng: number | null
           discount: number
+          fulfillment: string
           id: string
           notes: string | null
           operator_id: string | null
@@ -221,12 +223,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancelled_by_customer?: boolean
           created_at?: string
           delivery_address: string
           delivery_fee?: number
           delivery_lat?: number | null
           delivery_lng?: number | null
           discount?: number
+          fulfillment?: string
           id?: string
           notes?: string | null
           operator_id?: string | null
@@ -242,12 +246,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancelled_by_customer?: boolean
           created_at?: string
           delivery_address?: string
           delivery_fee?: number
           delivery_lat?: number | null
           delivery_lng?: number | null
           discount?: number
+          fulfillment?: string
           id?: string
           notes?: string | null
           operator_id?: string | null
@@ -352,36 +358,65 @@ export type Database = {
       }
       promotions: {
         Row: {
-          code: string
+          code: string | null
           created_at: string
           discount_percent: number
           ends_at: string
           id: string
           is_active: boolean
           name: string
+          product_id: string | null
           starts_at: string
           updated_at: string
         }
         Insert: {
-          code: string
+          code?: string | null
           created_at?: string
           discount_percent: number
           ends_at: string
           id?: string
           is_active?: boolean
           name: string
+          product_id?: string | null
           starts_at: string
           updated_at?: string
         }
         Update: {
-          code?: string
+          code?: string | null
           created_at?: string
           discount_percent?: number
           ends_at?: string
           id?: string
           is_active?: boolean
           name?: string
+          product_id?: string | null
           starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_settings: {
+        Row: {
+          id: boolean
+          min_delivery_amount: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          min_delivery_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          min_delivery_amount?: number
           updated_at?: string
         }
         Relationships: []
@@ -520,6 +555,7 @@ export type Database = {
         Args: { perms: string[]; target_id: string }
         Returns: undefined
       }
+      cancel_my_order: { Args: { target_order: string }; Returns: undefined }
       get_order_customers: {
         Args: { order_ids: string[] }
         Returns: {

@@ -6,6 +6,8 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
 import { VariantPhoto } from "@/components/VariantPhoto";
+import { notifyOrderCancelled } from "@/lib/order-notify.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { DeleteAccountSection } from "@/components/pages/AccountDeletion";
 import { stockState } from "@/components/AdminPanel";
 import { Empty, Page, PageTitle, StatusTimeline, fieldCls, mzn, paymentLabel, statusLabel } from "@/components/ui-bits";
@@ -61,7 +63,7 @@ export function ProductDetail({ id }: { id: string }) {
 }
 
 /* ---------- Detalhe da encomenda ---------- */
-type OrderFull = { id: string; order_number: number; status: string; payment_status: string; payment_method: string; delivery_address: string; subtotal: number; delivery_fee: number; discount: number; total: number; notes: string | null; created_at: string; promotion_code: string | null };
+type OrderFull = { id: string; order_number: number; status: string; payment_status: string; payment_method: string; delivery_address: string; subtotal: number; delivery_fee: number; discount: number; total: number; notes: string | null; created_at: string; promotion_code: string | null; fulfillment: string };
 type Item = { id: string; product_name: string; unit_label: string; quantity: number; unit_price: number };
 export function OrderDetail({ id }: { id: string }) {
   const [o, setO] = useState<OrderFull | null | undefined>(undefined);
@@ -71,14 +73,28 @@ export function OrderDetail({ id }: { id: string }) {
     void supabase.from("order_items").select("id,product_name,unit_label,quantity,unit_price").eq("order_id", id).then(({ data }) => setItems((data ?? []).map((i) => ({ ...i, quantity: Number(i.quantity), unit_price: Number(i.unit_price) }))));
   };
   useEffect(load, [id]);
+  const notifyCancel = useServerFn(notifyOrderCancelled);
+  const [cancelMsg, setCancelMsg] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const cancel = async () => {
+    if (!o) return;
+    if (!confirm(`Cancelar a encomenda #${o.order_number}? Esta ação não pode ser desfeita.`)) return;
+    setCancelling(true);
+    const { error } = await supabase.rpc("cancel_my_order", { target_order: o.id });
+    setCancelling(false);
+    if (error) { setCancelMsg(error.message); return; }
+    setCancelMsg("Encomenda cancelada. A loja foi avisada.");
+    void notifyCancel({ data: { orderId: o.id } }).catch(() => undefined);
+    load();
+  };
   if (o === undefined) return <Page><Loading /></Page>;
   if (!o) return <Page><Empty title="Encomenda não encontrada" text="Verifique se tem sessão iniciada com a conta certa." action="Minhas encomendas" to="/encomendas" /></Page>;
   return <Page>
     <PageTitle back="/encomendas" title={`Encomenda #${o.order_number}`} subtitle={new Date(o.created_at).toLocaleString("pt-MZ")} />
-    <section className="rounded-lg border border-border bg-card p-5"><h2 className="mb-4 font-display text-xl">{statusLabel[o.status]}</h2><StatusTimeline status={o.status} /></section>
+    <section className="rounded-lg border border-border bg-card p-5"><h2 className="mb-4 font-display text-xl">{statusLabel[o.status]}</h2><StatusTimeline status={o.status} />{(o.status === "received" || o.status === "preparing") && <Button variant="outline" className="mt-4 text-destructive" disabled={cancelling} onClick={() => void cancel()}><X /> {cancelling ? "A cancelar…" : "Cancelar encomenda"}</Button>}{cancelMsg && <p className="mt-2 text-sm text-primary">{cancelMsg}</p>}</section>
     <section className="mt-4 rounded-lg border border-border bg-card p-5"><h2 className="font-display text-xl">Artigos</h2><div className="mt-3 divide-y divide-border">{items.map((i) => <div key={i.id} className="flex justify-between gap-3 py-2 text-sm"><span>{i.quantity} × {i.product_name} <small className="text-muted-foreground">({i.unit_label})</small></span><strong>{mzn(i.quantity * i.unit_price)}</strong></div>)}</div>
       <div className="mt-4 space-y-1 border-t border-border pt-3 text-sm"><Row l="Produtos" v={mzn(o.subtotal)} /><Row l="Entrega" v={mzn(o.delivery_fee)} />{o.discount > 0 && <Row l={`Desconto${o.promotion_code ? ` (${o.promotion_code})` : ""}`} v={`−${mzn(o.discount)}`} />}<div className="flex justify-between pt-2 text-lg font-bold"><span>Total</span><span>{mzn(o.total)}</span></div></div></section>
-    <section className="mt-4 grid gap-4 sm:grid-cols-2"><div className="rounded-lg border border-border bg-card p-5 text-sm"><strong className="block">Entrega</strong><p className="mt-1 text-muted-foreground"><MapPin className="mr-1 inline h-4 w-4" />{o.delivery_address}</p>{o.notes && <p className="mt-2 text-muted-foreground">Nota: {o.notes}</p>}</div><div className="rounded-lg border border-border bg-card p-5 text-sm"><strong className="block">Pagamento</strong><p className="mt-1 text-muted-foreground">{paymentLabel[o.payment_method]} · {o.payment_status === "paid" ? "Pago" : "Pendente"}</p></div></section>
+    <section className="mt-4 grid gap-4 sm:grid-cols-2"><div className="rounded-lg border border-border bg-card p-5 text-sm"><strong className="block">{o.fulfillment === "pickup" ? "Levantamento na loja" : "Entrega"}</strong><p className="mt-1 text-muted-foreground"><MapPin className="mr-1 inline h-4 w-4" />{o.delivery_address}</p>{o.notes && <p className="mt-2 text-muted-foreground">Nota: {o.notes}</p>}</div><div className="rounded-lg border border-border bg-card p-5 text-sm"><strong className="block">Pagamento</strong><p className="mt-1 text-muted-foreground">{paymentLabel[o.payment_method]} · {o.payment_status === "paid" ? "Pago" : "Pendente"}</p></div></section>
   </Page>;
 }
 const Row = ({ l, v }: { l: string; v: string }) => <div className="flex justify-between"><span className="text-muted-foreground">{l}</span><span>{v}</span></div>;

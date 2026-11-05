@@ -57,6 +57,13 @@
       "when": 1793864152071,
       "tag": "0007_permissions_audit_order_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793874588420,
+      "tag": "0008_cancel_pickup_item_promos",
+      "breakpoints": true
     }
   ]
 }

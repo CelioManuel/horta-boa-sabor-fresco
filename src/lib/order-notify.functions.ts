@@ -35,3 +35,37 @@ export const notifyNewOrder = createServerFn({ method: "POST" })
     results.forEach((r) => r.status === "rejected" && console.error("Notificação falhou:", r.reason));
     return { ok: results.every((r) => r.status === "fulfilled") };
   });
+
+export const notifyOrderCancelled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { orderId: string }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(d?.orderId ?? "")) throw new Error("Encomenda inválida");
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    // Only the customer who cancelled their own order can trigger this alert.
+    const { data: o } = await context.supabase.from("orders").select("id,order_number,total,status,user_id,operator_id,delivery_address,fulfillment").eq("id", data.orderId).maybeSingle();
+    if (!o || o.user_id !== context.userId || o.status !== "cancelled") throw new Error("Encomenda não encontrada");
+    const { data: profile } = await context.supabase.from("profiles").select("full_name,phone").eq("id", o.user_id).maybeSingle();
+    const phones = [STAFF_PHONE];
+    const emails = [STAFF_EMAIL];
+    if (o.operator_id) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: op } = await supabaseAdmin.from("profiles").select("phone").eq("id", o.operator_id).maybeSingle();
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(o.operator_id);
+      const opPhone = (op?.phone || u.user?.phone || "").trim();
+      if (opPhone) phones.push(opPhone.startsWith("+") ? opPhone : `+${opPhone.replace(/\D/g, "")}`);
+      if (u.user?.email) emails.push(u.user.email);
+    }
+    const ref = o.order_number ?? o.id.slice(0, 8);
+    const customer = profile?.full_name || "Cliente";
+    const { sendSms, sendEmail } = await import("@/lib/notify.server");
+    const { toSmsText } = await import("@/lib/order-sms");
+    const text = `Horta Boa: encomenda #${ref} CANCELADA pelo cliente.\nCliente: ${customer} (${profile?.phone || "-"})\nTotal: ${Number(o.total).toFixed(2)} MZN\n${o.fulfillment === "pickup" ? "Levantamento na loja" : `Entrega: ${o.delivery_address}`}`;
+    const results = await Promise.allSettled([
+      sendSms([...new Set(phones)], toSmsText(text)),
+      ...[...new Set(emails)].map((e) => sendEmail(e, `Encomenda #${ref} cancelada`, text)),
+    ]);
+    results.forEach((r) => r.status === "rejected" && console.error("Notificação de cancelamento falhou:", r.reason));
+    return { ok: results.every((r) => r.status === "fulfilled") };
+  });

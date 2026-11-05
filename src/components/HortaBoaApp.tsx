@@ -1,4 +1,4 @@
-import { checkoutTotals } from "@/lib/checkout";
+import { DEFAULT_MIN_DELIVERY, canDeliver, checkoutTotals, itemPromoDiscount, type ItemPromo } from "@/lib/checkout";
 import { notifyNewOrder } from "@/lib/order-notify.functions";
 import { productImageStyle } from "@/lib/product-images";
 import { VariantPhoto } from "@/components/VariantPhoto";
@@ -160,24 +160,40 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   const [geoMsg, setGeoMsg] = useState("");
   const locate = () => { if (!navigator.geolocation) { setGeoMsg("O seu dispositivo não permite localização."); return; } setGeoMsg("A obter localização…"); navigator.geolocation.getCurrentPosition((p) => { setGeo({ lat: p.coords.latitude, lng: p.coords.longitude }); setGeoMsg("Localização GPS adicionada."); }, () => setGeoMsg("Não foi possível obter a localização. Autorize o acesso no navegador."), { enableHighAccuracy: true, timeout: 15000 }); };
   const [store, setStore] = useState<{ id: string; fee: number } | null>(null);
+  const [stores, setStores] = useState<{ id: string; name: string; address: string; phone: string }[]>([]);
+  const [minDelivery, setMinDelivery] = useState(DEFAULT_MIN_DELIVERY);
+  const [promos, setPromos] = useState<ItemPromo[]>([]);
+  const [mode, setMode] = useState<"delivery" | "pickup">("delivery");
+  const [pickupId, setPickupId] = useState("");
+  const [picker, setPicker] = useState(false);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     void supabase.from("stores").select("id,delivery_fee").eq("is_active", true).order("created_at").limit(1).maybeSingle().then(({ data }) => data && setStore({ id: data.id, fee: Number(data.delivery_fee) }));
+    void supabase.from("stores").select("id,name,address,phone").eq("is_active", true).order("name").then(({ data }) => setStores(data ?? []));
+    void supabase.from("shop_settings").select("min_delivery_amount").maybeSingle().then(({ data }) => data && setMinDelivery(Number(data.min_delivery_amount)));
+    void supabase.from("promotions").select("product_id,discount_percent,starts_at,ends_at,is_active").not("product_id", "is", null).then(({ data }) => setPromos((data ?? []).map((p) => ({ ...p, discount_percent: Number(p.discount_percent) }))));
     void supabase.auth.getUser().then(({ data }) => { if (!data.user) return; setSignedIn(true); void supabase.from("user_addresses").select("id,label,address,city,is_default").order("is_default", { ascending: false }).then(({ data: a }) => { setAddresses(a ?? []); if (a?.[0]) setAddrId(a[0].id); }); });
   }, []);
-  const { deliveryFee: fee, discount, total } = checkoutTotals(subtotal);
+  const itemDiscount = itemPromoDiscount(lines.map((l) => ({ id: l.id, lineTotal: l.price * l.minQuantity * l.quantity })), promos);
+  const { deliveryFee: fee, discount, total } = checkoutTotals(subtotal, 0, itemDiscount);
+  const deliveryAllowed = canDeliver(subtotal, minDelivery);
+  const pickupStore = stores.find((s) => s.id === pickupId);
+  useEffect(() => { if (!deliveryAllowed && mode === "delivery") setMode("pickup"); }, [deliveryAllowed, mode]);
+  const chooseMode = (m: "delivery" | "pickup") => { if (m === "delivery" && !deliveryAllowed) { setNotice(`A entrega está disponível a partir de ${mzn(minDelivery)}.`); return; } setNotice(""); setMode(m); if (m === "pickup" && !pickupId) setPicker(true); };
   const placeOrder = async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { await navigate({ to: "/auth" }); return; }
     const chosen = addresses.find((a) => a.id === addrId);
-    const address = (chosen ? `${chosen.address}, ${chosen.city}` : manual.trim()) || (geo ? "Localização GPS partilhada" : "");
+    if (mode === "pickup" && !pickupStore) { setPicker(true); setNotice("Escolha a loja onde vai levantar."); return; }
+    if (mode === "delivery" && !deliveryAllowed) { setNotice(`A entrega está disponível a partir de ${mzn(minDelivery)}.`); return; }
+    const address = mode === "pickup" ? `Levantamento: ${pickupStore!.name} — ${pickupStore!.address}` : (chosen ? `${chosen.address}, ${chosen.city}` : manual.trim()) || (geo ? "Localização GPS partilhada" : "");
     if (!address) { setNotice("Indique o endereço de entrega."); return; }
     const outOfStock = lines.find((l) => l.stock <= 0);
     if (outOfStock) { setNotice(`${outOfStock.name} está fora de stock.`); return; }
     setBusy(true);
-    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: store?.id ?? null, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null, delivery_lat: geo?.lat ?? null, delivery_lng: geo?.lng ?? null }).select("id").single();
-    if (error || !order) { setBusy(false); setNotice("Não foi possível criar a encomenda. Tente novamente."); return; }
+    const { data: order, error } = await supabase.from("orders").insert({ user_id: auth.user.id, store_id: mode === "pickup" ? pickupId : store?.id ?? null, fulfillment: mode, payment_method: method, delivery_address: address, subtotal, delivery_fee: fee, discount, total, notes: notes.trim() || null, delivery_lat: mode === "delivery" ? geo?.lat ?? null : null, delivery_lng: mode === "delivery" ? geo?.lng ?? null : null }).select("id").single();
+    if (error || !order) { setBusy(false); setNotice(error?.message.includes("Entrega") || error?.message.includes("loja") ? error.message : "Não foi possível criar a encomenda. Tente novamente."); return; }
     const { error: itemsError } = await supabase.from("order_items").insert(lines.map((line) => ({ order_id: order.id, product_id: line.id, product_name: line.name, unit_label: line.unitLabel, quantity: line.quantity * line.minQuantity, unit_price: line.price })));
     setBusy(false);
     if (itemsError) { setNotice("A encomenda foi criada, mas os itens precisam de confirmação."); return; }
@@ -188,19 +204,26 @@ function Cart({ lines, subtotal, change, remove, clear }: { lines: ReturnType<ty
   return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-6xl px-4 pb-28 pt-8 sm:px-6"><PageTitle back="/produtos" title="O seu carrinho" subtitle={`${lines.length} tipos de produtos selecionados`} />{lines.length === 0 ? <Empty icon={ShoppingBasket} title="O seu cesto está vazio" text="Escolha produtos frescos para começar a sua encomenda." action="Ver produtos" to="/produtos" /> : <div className="grid gap-8 lg:grid-cols-[1.35fr_.65fr]"><div className="space-y-3">{lines.map((line) => <article key={line.id} className="flex gap-4 rounded-lg border border-border bg-card p-3"><div className={`product-thumb ${productPositions[line.imageKey] ?? "product-generic"}`} style={productImageStyle(line.imageKey)} /><div className="min-w-0 flex-1"><div className="flex justify-between gap-3"><div><h3 className="font-display text-lg">{line.name}</h3><p className="text-xs text-muted-foreground">{mzn(line.price)} / {line.unitLabel}</p></div><Button variant="ghost" size="icon" onClick={() => remove(line.id)} aria-label="Remover"><Trash2 className="text-destructive" /></Button></div><div className="mt-3 flex items-center justify-between"><div className="flex items-center rounded-md border border-input"><Button variant="ghost" size="icon" onClick={() => change(line.id, -1)} aria-label="Menos"><Minus /></Button><span className="w-8 text-center text-sm font-bold">{line.quantity}</span><Button variant="ghost" size="icon" onClick={() => change(line.id, 1)} aria-label="Mais"><Plus /></Button></div><strong>{mzn(line.price * line.minQuantity * line.quantity)}</strong></div></div></article>)}</div>
   <aside className="h-fit rounded-lg border border-border bg-card p-5 shadow-sm">
     <h2 className="font-display text-2xl">Resumo</h2>
-    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Entrega</span><span className="text-primary">Grátis</span></div><div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
-    <h3 className="mt-6 text-sm font-bold">Endereço de entrega</h3>
+    <div className="mt-5 space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Produtos</span><span>{mzn(subtotal)}</span></div>{discount > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Promoções</span><span className="text-primary">−{mzn(discount)}</span></div>}<div className="flex justify-between"><span className="text-muted-foreground">{mode === "pickup" ? "Levantamento" : "Entrega"}</span><span className="text-primary">Grátis</span></div><div className="flex justify-between border-t border-border pt-3 text-lg font-bold"><span>Total</span><span>{mzn(total)}</span></div></div>
+    <h3 className="mt-6 text-sm font-bold">Como quer receber?</h3>
+    <div className="mt-2 grid grid-cols-2 gap-2">{([["delivery", "Entrega em casa", Truck], ["pickup", "Levantar na loja", Store]] as const).map(([value, label, Icon]) => <button key={value} type="button" onClick={() => chooseMode(value)} className={`flex items-center justify-center gap-2 rounded-md border p-3 text-sm font-semibold transition ${mode === value ? "border-primary bg-leaf-soft text-primary" : "border-border bg-background"} ${value === "delivery" && !deliveryAllowed ? "opacity-50" : ""}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
+    {!deliveryAllowed && <p className="mt-1 text-xs text-muted-foreground">Entrega disponível a partir de {mzn(minDelivery)}. Faltam {mzn(minDelivery - subtotal)}.</p>}
+    {mode === "pickup" ? <button type="button" onClick={() => setPicker(true)} className="mt-2 w-full rounded-md border border-border bg-background p-3 text-left text-sm">{pickupStore ? <><strong className="block">{pickupStore.name}</strong><span className="text-xs text-muted-foreground">{pickupStore.address} · alterar</span></> : <span className="text-primary">Escolher loja…</span>}</button> : <>
+    <h3 className="mt-4 text-sm font-bold">Endereço de entrega</h3>
     {signedIn && addresses.length > 0 ? <select className={`${fieldCls} mt-2`} value={addrId} onChange={(e) => setAddrId(e.target.value)}>{addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {a.address}</option>)}<option value="">Outro endereço…</option></select> : null}
     {(!addrId || addresses.length === 0) && <input className={`${fieldCls} mt-2`} placeholder="Bairro, rua, número, referência" value={manual} onChange={(e) => setManual(e.target.value)} />}
     <Button type="button" variant="outline" size="sm" className="mt-2 w-full" onClick={locate}><MapPin /> {geo ? "Atualizar a minha localização" : "Usar a minha localização atual"}</Button>
     {geoMsg && <p className="mt-1 text-xs text-muted-foreground">{geoMsg}</p>}
-    {signedIn && <Link to="/conta/enderecos" className="mt-1 inline-block text-xs font-semibold text-primary">Gerir endereços</Link>}
+    {signedIn && <Link to="/conta/enderecos" className="mt-1 inline-block text-xs font-semibold text-primary">Gerir endereços</Link>}</>}
     <textarea className="mt-3 w-full rounded-md border border-input bg-background p-3 text-sm" rows={2} placeholder="Nota para o operador (opcional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
     <h3 className="mt-4 text-sm font-bold">Método de pagamento</h3>
     <div className="mt-2 grid grid-cols-2 gap-2">{([["mpesa", "M-Pesa"], ["emola", "e-Mola"], ["pos", "POS"], ["cash", "Dinheiro"]] as const).map(([value, label]) => <button key={value} onClick={() => setMethod(value)} className={`rounded-md border p-3 text-sm font-semibold transition ${method === value ? "border-primary bg-leaf-soft text-primary" : "border-border bg-background"}`}>{label}</button>)}</div>
     {notice && <p className="mt-3 text-sm text-destructive">{notice}</p>}
     <Button size="lg" className="mt-5 w-full" disabled={busy} onClick={() => void placeOrder()}>{busy ? "A enviar…" : signedIn ? "Finalizar encomenda" : "Entrar para finalizar"} <ChevronRight /></Button>
-  </aside></div>}</main>;
+  </aside></div>}
+  {picker && <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Escolher loja" onClick={() => setPicker(false)}><div className="w-full max-w-md rounded-lg bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Em que loja vai levantar?</h2><Button variant="ghost" size="icon" aria-label="Fechar" onClick={() => setPicker(false)}><X /></Button></div>
+    <div className="mt-4 max-h-[60vh] space-y-2 overflow-y-auto">{stores.length === 0 && <p className="text-sm text-muted-foreground">Não há lojas disponíveis de momento.</p>}{stores.map((s) => <button key={s.id} type="button" onClick={() => { setPickupId(s.id); setMode("pickup"); setPicker(false); setNotice(""); }} className={`w-full rounded-md border p-3 text-left text-sm transition ${pickupId === s.id ? "border-primary bg-leaf-soft" : "border-border hover:border-primary"}`}><strong className="block"><Store className="mr-1 inline h-4 w-4" />{s.name}</strong><span className="text-xs text-muted-foreground">{s.address}{s.phone ? ` · ${s.phone}` : ""}</span></button>)}</div></div></div>}
+  </main>;
 }
 
 function Orders({ orders, signedIn }: { orders: Order[]; signedIn: boolean }) { return <main className="mx-auto min-h-[calc(100vh-72px)] max-w-5xl px-4 pb-28 pt-8 sm:px-6"><PageTitle title="Minhas encomendas" subtitle="Acompanhe cada compra, da preparação à entrega." />{!signedIn ? <Empty icon={CircleUserRound} title="Entre na sua conta" text="Inicie sessão para consultar as suas encomendas." action="Entrar" to="/auth" /> : orders.length === 0 ? <Empty icon={Package} title="Ainda não há encomendas" text="A sua próxima cesta fresca começa no catálogo." action="Comprar agora" to="/produtos" /> : <div className="space-y-4">{orders.map((order) => <Link key={order.id} to="/encomendas/$id" params={{ id: order.id }} className="block rounded-lg border border-border bg-card p-5 transition hover:border-primary"><div className="flex flex-wrap items-start justify-between gap-3"><div><span className="text-xs text-muted-foreground">Encomenda #{order.order_number}</span><h2 className="mt-1 font-display text-xl">{statusLabel[order.status] ?? order.status}</h2></div><span className="rounded-full bg-leaf-soft px-3 py-1 text-xs font-bold text-primary">{order.payment_status === "paid" ? "Pago" : "Pagamento pendente"}</span></div><div className="mt-5 grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-3"><span><Clock3 className="mr-2 inline h-4 w-4 text-muted-foreground" />{new Date(order.created_at).toLocaleDateString("pt-MZ")}</span><span className="truncate"><MapPin className="mr-2 inline h-4 w-4 text-muted-foreground" />{order.delivery_address}</span><strong className="sm:text-right">{mzn(order.total)}</strong></div></Link>)}</div>}</main>; }

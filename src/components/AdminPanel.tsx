@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BarChart3, History, Search, Store, Tag, Package, Pencil, Plus, Save, Sprout, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { productImageKeys } from "@/lib/product-images";
-import { AdminDashboard, PromotionsAdmin, StoresAdmin } from "@/components/pages/AdminExtras";
+import { AdminDashboard, DeliverySettings, PromotionsAdmin, StoresAdmin } from "@/components/pages/AdminExtras";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerCard, useOrderCustomers } from "@/components/pages/OrderCustomer";
@@ -97,7 +97,7 @@ export function AdminPanel() {
 
     {tab === "dashboard" && <AdminDashboard />}
     {tab === "history" && <AuditLog />}
-    {tab === "stores" && <StoresAdmin />}
+    {tab === "stores" && <><DeliverySettings /><StoresAdmin /></>}
     {tab === "promos" && <PromotionsAdmin />}
     {tab === "products" && <section className="mt-5">
       <Button onClick={() => setEditing({ ...emptyProduct })}><Plus /> Novo produto</Button>

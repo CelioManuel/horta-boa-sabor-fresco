@@ -71,35 +71,53 @@ export function StoresAdmin() {
   </section>;
 }
 
-type Promo = { id?: string; name: string; code: string; discount_percent: number; starts_at: string; ends_at: string; is_active: boolean };
-const day = (d: Date) => d.toISOString().slice(0, 10);
+type Promo = { id?: string; name: string; code: string | null; discount_percent: number; starts_at: string; ends_at: string; is_active: boolean; product_id: string | null };
+const local = (d: Date | string) => { const x = new Date(d); return new Date(x.getTime() - x.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
+const when = (d: string) => new Date(d).toLocaleString("pt-MZ", { dateStyle: "short", timeStyle: "short" });
+
+export function DeliverySettings() {
+  const [min, setMin] = useState<number | "">("");
+  const [msg, setMsg] = useState("");
+  useEffect(() => { void supabase.from("shop_settings").select("min_delivery_amount").maybeSingle().then(({ data }) => data && setMin(Number(data.min_delivery_amount))); }, []);
+  const save = async () => {
+    if (min === "" || min < 0) return setMsg("Indique um valor válido.");
+    const { error } = await supabase.from("shop_settings").update({ min_delivery_amount: min, updated_at: new Date().toISOString() }).eq("id", true);
+    setMsg(error ? "Erro: " + error.message : "Valor mínimo guardado.");
+  };
+  return <div className="mt-5 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4"><label className="text-sm">Valor mínimo para entrega (MZN)<input type="number" min={0} className={fieldCls} value={min} onChange={(e) => setMin(e.target.value === "" ? "" : Number(e.target.value))} /></label><Button onClick={() => void save()}><Save /> Guardar</Button><p className="w-full text-xs text-muted-foreground">Abaixo deste valor o cliente só pode levantar na loja.</p>{msg && <p className="text-sm text-primary">{msg}</p>}</div>;
+}
 export function PromotionsAdmin() {
   const [list, setList] = useState<Promo[]>([]);
   const [edit, setEdit] = useState<Promo | null>(null);
   const [msg, setMsg] = useState("");
-  const load = () => void supabase.from("promotions").select("id,name,code,discount_percent,starts_at,ends_at,is_active").order("starts_at", { ascending: false }).then(({ data }) => setList((data ?? []).map((p) => ({ ...p, discount_percent: Number(p.discount_percent) }))));
+  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => { void supabase.from("products").select("id,name").order("name").then(({ data }) => setProducts(data ?? [])); }, []);
+  const load = () => void supabase.from("promotions").select("id,name,code,discount_percent,starts_at,ends_at,is_active,product_id").order("starts_at", { ascending: false }).then(({ data }) => setList((data ?? []).map((p) => ({ ...p, discount_percent: Number(p.discount_percent) }))));
   useEffect(load, []);
   const save = async () => {
-    if (!edit?.name.trim() || !edit.code.trim()) return setMsg("Indique nome e código.");
+    if (!edit?.name.trim()) return setMsg("Indique o nome.");
+    if (!edit.product_id && !edit.code?.trim()) return setMsg("Promoção geral precisa de código; ou escolha um artigo.");
+    if (new Date(edit.ends_at) <= new Date(edit.starts_at)) return setMsg("O fim tem de ser depois do início.");
     if (edit.discount_percent <= 0 || edit.discount_percent > 100) return setMsg("O desconto deve estar entre 1 e 100%.");
-    const { id, ...r } = edit; const row = { ...r, code: r.code.trim().toUpperCase(), starts_at: new Date(r.starts_at.slice(0, 10) + "T00:00:00").toISOString(), ends_at: new Date(r.ends_at.slice(0, 10) + "T23:59:59").toISOString() };
+    const { id, ...r } = edit; const row = { ...r, code: r.code?.trim().toUpperCase() || null, starts_at: new Date(r.starts_at).toISOString(), ends_at: new Date(r.ends_at).toISOString() };
     const { error } = id ? await supabase.from("promotions").update(row).eq("id", id) : await supabase.from("promotions").insert(row);
     setMsg(error ? "Erro: " + error.message : "Promoção guardada."); if (!error) { setEdit(null); load(); }
   };
   const del = async (p: Promo) => { if (!p.id || !confirm(`Remover ${p.name}?`)) return; await supabase.from("promotions").delete().eq("id", p.id); load(); };
   const now = Date.now();
   return <section className="mt-5">
-    <Button onClick={() => setEdit({ name: "", code: "", discount_percent: 10, starts_at: day(new Date()), ends_at: day(new Date(now + 30 * 864e5)), is_active: true })}><Plus /> Nova promoção</Button>
+    <Button onClick={() => setEdit({ name: "", code: "", discount_percent: 10, starts_at: local(new Date()), ends_at: local(new Date(now + 4 * 36e5)), is_active: true, product_id: null })}><Plus /> Nova promoção</Button>
     {msg && <p className="mt-3 text-sm text-primary">{msg}</p>}
     {edit && <div className="mt-4 grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
       <label className="text-sm">Nome<input className={fieldCls} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></label>
-      <label className="text-sm">Código<input className={fieldCls} value={edit.code} onChange={(e) => setEdit({ ...edit, code: e.target.value.toUpperCase() })} /></label>
+      <label className="text-sm sm:col-span-2">Artigo<select className={fieldCls} value={edit.product_id ?? ""} onChange={(e) => setEdit({ ...edit, product_id: e.target.value || null })}><option value="">Toda a loja (com código)</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+      <label className="text-sm">Código {edit.product_id && <small className="text-muted-foreground">(opcional — aplica-se automaticamente)</small>}<input className={fieldCls} value={edit.code ?? ""} onChange={(e) => setEdit({ ...edit, code: e.target.value.toUpperCase() })} /></label>
       <label className="text-sm">Desconto (%)<input type="number" className={fieldCls} value={edit.discount_percent} onChange={(e) => setEdit({ ...edit, discount_percent: Number(e.target.value) })} /></label>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.is_active} onChange={(e) => setEdit({ ...edit, is_active: e.target.checked })} /> Ativa</label>
-      <label className="text-sm">Início<input type="date" className={fieldCls} value={edit.starts_at.slice(0, 10)} onChange={(e) => setEdit({ ...edit, starts_at: e.target.value })} /></label>
-      <label className="text-sm">Fim<input type="date" className={fieldCls} value={edit.ends_at.slice(0, 10)} onChange={(e) => setEdit({ ...edit, ends_at: e.target.value })} /></label>
+      <label className="text-sm">Início (data e hora)<input type="datetime-local" className={fieldCls} value={local(edit.starts_at)} onChange={(e) => setEdit({ ...edit, starts_at: e.target.value })} /></label>
+      <label className="text-sm">Fim (data e hora)<input type="datetime-local" className={fieldCls} value={local(edit.ends_at)} onChange={(e) => setEdit({ ...edit, ends_at: e.target.value })} /></label>
       <div className="flex gap-2 sm:col-span-2"><Button onClick={() => void save()}><Save /> Guardar</Button><Button variant="outline" onClick={() => setEdit(null)}><X /> Cancelar</Button></div>
     </div>}
-    <div className="mt-4 overflow-hidden rounded-lg border border-border bg-card">{list.length === 0 && <p className="p-4 text-sm text-muted-foreground">Sem promoções.</p>}{list.map((p) => { const live = p.is_active && new Date(p.starts_at).getTime() <= now && new Date(p.ends_at).getTime() >= now; return <div key={p.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0"><div className="min-w-40 flex-1"><strong className="block text-sm">{p.name} · <code>{p.code}</code> · {p.discount_percent}%</strong><small className="text-muted-foreground">{new Date(p.starts_at).toLocaleDateString("pt-MZ")} – {new Date(p.ends_at).toLocaleDateString("pt-MZ")}</small></div><span className={`rounded-full px-2 py-1 text-xs font-bold ${live ? "bg-leaf-soft text-primary" : "bg-muted text-muted-foreground"}`}>{live ? "Em vigor" : "Inativa"}</span><Button size="icon" variant="outline" aria-label="Editar" onClick={() => setEdit(p)}><Pencil /></Button><Button size="icon" variant="outline" aria-label="Remover" onClick={() => void del(p)}><Trash2 /></Button></div>; })}</div>
+    <div className="mt-4 overflow-hidden rounded-lg border border-border bg-card">{list.length === 0 && <p className="p-4 text-sm text-muted-foreground">Sem promoções.</p>}{list.map((p) => { const live = p.is_active && new Date(p.starts_at).getTime() <= now && new Date(p.ends_at).getTime() >= now; return <div key={p.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0"><div className="min-w-40 flex-1"><strong className="block text-sm">{p.name}{p.code && <> · <code>{p.code}</code></>} · {p.discount_percent}%</strong><small className="text-muted-foreground">{p.product_id ? `Artigo: ${products.find((x) => x.id === p.product_id)?.name ?? "—"}` : "Toda a loja"} · {when(p.starts_at)} – {when(p.ends_at)}</small></div><span className={`rounded-full px-2 py-1 text-xs font-bold ${live ? "bg-leaf-soft text-primary" : "bg-muted text-muted-foreground"}`}>{live ? "Em vigor" : "Inativa"}</span><Button size="icon" variant="outline" aria-label="Editar" onClick={() => setEdit(p)}><Pencil /></Button><Button size="icon" variant="outline" aria-label="Remover" onClick={() => void del(p)}><Trash2 /></Button></div>; })}</div>
   </section>;
 }
