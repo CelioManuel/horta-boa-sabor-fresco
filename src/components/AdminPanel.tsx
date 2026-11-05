@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { CustomerCard, useOrderCustomers } from "@/components/pages/OrderCustomer";
 import { UsersAdmin } from "@/components/pages/UsersAdmin";
+import { DeletionRequestsAdmin } from "@/components/pages/AccountDeletion";
 
 type Role = "admin" | "operator" | "customer";
 type Product = { id: string; sku?: string | null; name: string; category: string; price: number; unit_label: string; min_quantity: number; stock: number; image_key: string; description: string; is_active: boolean; is_featured: boolean };
@@ -24,7 +25,7 @@ export function stockState(stock: number) {
 }
 
 export function AdminPanel() {
-  const [tab, setTab] = useState<"dashboard" | "products" | "stock" | "users" | "orders" | "stores" | "promos">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "products" | "stock" | "users" | "deletions" | "orders" | "stores" | "promos">("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -68,7 +69,7 @@ export function AdminPanel() {
   const operators = people.filter((p) => p.roles.includes("operator"));
   const inStock = products.filter((p) => p.stock > 0);
   const out = products.filter((p) => p.stock <= 0);
-  const tabs: Array<[typeof tab, string, typeof Sprout]> = [["dashboard", "Painel e relatórios", BarChart3], ["products", "Produtos", Sprout], ["stock", "Stock", Package], ["users", "Utilizadores e operadores", Users], ["orders", "Encomendas", Package], ["stores", "Lojas e entregas", Store], ["promos", "Promoções", Tag]];
+  const tabs: Array<[typeof tab, string, typeof Sprout]> = [["dashboard", "Painel e relatórios", BarChart3], ["products", "Produtos", Sprout], ["stock", "Stock", Package], ["users", "Utilizadores e operadores", Users], ["deletions", "Pedidos de eliminação", Users], ["orders", "Encomendas", Package], ["stores", "Lojas e entregas", Store], ["promos", "Promoções", Tag]];
   const input = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
 
   return <main className="mx-auto max-w-7xl px-4 pb-28 pt-8 sm:px-6">
@@ -112,6 +113,7 @@ export function AdminPanel() {
       {([["Em stock", inStock], ["Fora de stock", out]] as const).map(([title, list]) => <div key={title}><h2 className="font-display text-2xl">{title} ({list.length})</h2><div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">{list.length === 0 && <p className="p-4 text-sm text-muted-foreground">Nenhum produto.</p>}{list.map((p) => <div key={p.id} className="flex items-center gap-3 border-b border-border p-3 last:border-0"><div className="flex-1"><strong className="block text-sm">{p.name}</strong><small className="text-muted-foreground">{p.stock} × {p.unit_label}</small></div><Button size="sm" variant="outline" onClick={() => void setStock(p, p.stock - 1)}>−</Button><input type="number" className="h-9 w-20 rounded-md border border-input bg-background px-2 text-sm" defaultValue={p.stock} key={p.stock} onBlur={(e) => Number(e.target.value) !== p.stock && void setStock(p, Number(e.target.value))} /><Button size="sm" variant="outline" onClick={() => void setStock(p, p.stock + 1)}>+</Button>{p.stock > 0 && <Button size="sm" variant="ghost" onClick={() => void setStock(p, 0)}>Esgotar</Button>}</div>)}</div></div>)}
     </section>}
 
+    {tab === "deletions" && <DeletionRequestsAdmin />}
     {tab === "users" && <UsersAdmin onSaved={() => void loadPeople()} />}
 
     {tab === "orders" && <section className="mt-5 overflow-hidden rounded-lg border border-border bg-card">{orders.length === 0 && <p className="p-4 text-sm text-muted-foreground">Ainda não há encomendas.</p>}{orders.map((o) => <div key={o.id} className="flex flex-wrap items-center gap-3 border-b border-border p-3 last:border-0">

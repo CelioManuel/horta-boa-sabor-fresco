@@ -6,6 +6,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
 import { VariantPhoto } from "@/components/VariantPhoto";
+import { DeleteAccountSection } from "@/components/pages/AccountDeletion";
 import { stockState } from "@/components/AdminPanel";
 import { Empty, Page, PageTitle, StatusTimeline, fieldCls, mzn, paymentLabel, statusLabel } from "@/components/ui-bits";
 
@@ -189,6 +190,7 @@ export function SettingsPage() {
     {uid && <section className="rounded-lg border border-border bg-card p-5"><h2 className="font-display text-xl">Alterar palavra-passe</h2><div className="mt-3 grid gap-3 sm:grid-cols-2"><PasswordInput aria-label="Nova palavra-passe" autoComplete="new-password" placeholder="Nova palavra-passe" value={pw.a} onChange={(e) => setPw({ ...pw, a: e.target.value })} /><PasswordInput aria-label="Repetir palavra-passe" autoComplete="new-password" placeholder="Repetir palavra-passe" value={pw.b} onChange={(e) => setPw({ ...pw, b: e.target.value })} /></div>{msg && <p className="mt-2 text-sm text-primary">{msg}</p>}<Button className="mt-3" onClick={() => void changePw()}><Save /> Alterar</Button></section>}
     <section className="mt-4 rounded-lg border border-border bg-card p-5"><h2 className="font-display text-xl">Carrinho</h2><p className="mt-1 text-sm text-muted-foreground">{count} artigos guardados neste dispositivo.</p><Button className="mt-3" variant="outline" disabled={count === 0} onClick={clear}><Trash2 /> Esvaziar carrinho</Button></section>
     <section className="mt-4 rounded-lg border border-border bg-card p-5 text-sm"><h2 className="font-display text-xl">Idioma e moeda</h2><p className="mt-1 text-muted-foreground">Português (Moçambique) · Meticais (MZN)</p></section>
+    {uid && <DeleteAccountSection uid={uid} />}
     {uid && <Button className="mt-6" variant="outline" onClick={() => void supabase.auth.signOut().then(() => navigate({ to: "/" }))}>Terminar sessão</Button>}
   </Page>;
 }
