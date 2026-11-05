@@ -13,9 +13,9 @@ export function HelpPage() {
   return <Page>
     <PageTitle back="/conta" title="Ajuda" subtitle="Respostas rápidas e contactos da Horta Boa." />
     <div className="grid gap-3 sm:grid-cols-3">
-      <a href="https://wa.me/258840000000" className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary"><MessageCircle className="text-primary" /><span><strong className="block text-sm">WhatsApp</strong><small className="text-muted-foreground">+258 84 000 0000</small></span></a>
-      <a href="tel:+258840000000" className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary"><Phone className="text-primary" /><span><strong className="block text-sm">Telefone</strong><small className="text-muted-foreground">+258 84 000 0000</small></span></a>
-      <a href="mailto:apoio@hortaboa.co.mz" className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary"><Mail className="text-primary" /><span><strong className="block text-sm">Email</strong><small className="text-muted-foreground">apoio@hortaboa.co.mz</small></span></a>
+      <a href="https://wa.me/258867568468" className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary"><MessageCircle className="text-primary" /><span><strong className="block text-sm">WhatsApp</strong><small className="text-muted-foreground">+258 86 756 8468</small></span></a>
+      <a href="tel:+258867568468" className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary"><Phone className="text-primary" /><span><strong className="block text-sm">Telefone</strong><small className="text-muted-foreground">+258 86 756 8468</small></span></a>
+      <a href="mailto:info@hortaboa.co.mz" className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-primary"><Mail className="text-primary" /><span><strong className="block text-sm">Email</strong><small className="text-muted-foreground">info@hortaboa.co.mz</small></span></a>
     </div>
     <h2 className="mt-8 font-display text-2xl">Perguntas frequentes</h2>
     <div className="mt-3 space-y-2">{faq.map(([q, a]) => <details key={q} className="rounded-lg border border-border bg-card p-4"><summary className="cursor-pointer font-semibold">{q}</summary><p className="mt-2 text-sm leading-6 text-muted-foreground">{a}</p></details>)}</div>
