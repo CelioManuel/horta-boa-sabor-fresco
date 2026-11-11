@@ -78,3 +78,8 @@ Em instalações anteriormente configuradas, actualize as variáveis de ambiente
 ## Identidade
 
 Horta Boa — Sabor Fresco. Projecto destinado à comercialização e entrega de produtos hortícolas em Moçambique.
+
+
+## Portefólio técnico
+
+Leia o [estudo de caso do projecto](docs/ESTUDO_DE_CASO.md) para conhecer a arquitectura, as funcionalidades, as decisões técnicas e os aspectos ainda por validar.
