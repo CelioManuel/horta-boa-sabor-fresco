@@ -10,7 +10,7 @@ const requireAdministrator = createMiddleware({ type: "function" }).middleware([
 });
 
 export const requestAccountDeletion = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ confirm: z.string().max(40), reason: z.string().max(500) }).parse(i))
+  .validator((i: unknown) => z.object({ confirm: z.string().max(40), reason: z.string().max(500) }).parse(i))
   .handler(async ({ data, context }) => {
     const { data: orders } = await context.supabase.from("orders").select("status").eq("user_id", context.userId);
     const problem = checkDeletionRequest({ ...data, orderStatuses: (orders ?? []).map((o) => o.status) });
@@ -37,7 +37,7 @@ export const listDeletionRequests = createServerFn({ method: "POST" }).middlewar
 });
 
 export const reviewDeletionRequest = createServerFn({ method: "POST" }).middleware([requireAdministrator])
-  .inputValidator((i: unknown) => z.object({ id: z.string().uuid(), approve: z.boolean(), note: z.string().max(500).default("") }).parse(i))
+  .validator((i: unknown) => z.object({ id: z.string().uuid(), approve: z.boolean(), note: z.string().max(500).default("") }).parse(i))
   .handler(async ({ data, context }) => {
     const { data: req } = await context.supabase.from("account_deletion_requests").select("user_id,status").eq("id", data.id).maybeSingle();
     if (!req || req.status !== "pending") throw new Error("Pedido já não está pendente.");

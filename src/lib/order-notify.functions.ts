@@ -6,7 +6,7 @@ const STAFF_PHONE = "+258845630988";
 
 export const notifyNewOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { orderId: string }) => {
+  .validator((d: { orderId: string }) => {
     if (!/^[0-9a-f-]{36}$/i.test(d?.orderId ?? "")) throw new Error("Encomenda inválida");
     return d;
   })
@@ -38,7 +38,7 @@ export const notifyNewOrder = createServerFn({ method: "POST" })
 
 export const notifyOrderCancelled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { orderId: string }) => {
+  .validator((d: { orderId: string }) => {
     if (!/^[0-9a-f-]{36}$/i.test(d?.orderId ?? "")) throw new Error("Encomenda inválida");
     return d;
   })

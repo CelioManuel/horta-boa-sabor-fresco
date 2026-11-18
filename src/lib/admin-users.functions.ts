@@ -53,13 +53,13 @@ export const listAccounts = createServerFn({ method: "POST" }).middleware([requi
   return accounts;
 });
 
-export const saveAccount = createServerFn({ method: "POST" }).middleware([requireAdministrator]).inputValidator((input: unknown) => profileInput.parse(input)).handler(async ({ data, context }) => {
+export const saveAccount = createServerFn({ method: "POST" }).middleware([requireAdministrator]).validator((input: unknown) => profileInput.parse(input)).handler(async ({ data, context }) => {
   protectOwnAdmin(context.userId, data.id, data.roles);
   await saveAsManager(context.isAdmin, context.supabase, data);
   return { ok: true };
 });
 
-export const createAccount = createServerFn({ method: "POST" }).middleware([requireAdministrator]).inputValidator((input: unknown) => createAccountInput.parse(input)).handler(async ({ data, context }) => {
+export const createAccount = createServerFn({ method: "POST" }).middleware([requireAdministrator]).validator((input: unknown) => createAccountInput.parse(input)).handler(async ({ data, context }) => {
   const request = getRequest();
   const origin = request.headers.get("origin") ?? new URL(request.url).origin;
   if (new URL(data.redirectTo).origin !== origin) throw new Error("Endereço de confirmação inválido.");

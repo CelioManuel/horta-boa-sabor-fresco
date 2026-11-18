@@ -17,6 +17,12 @@ export default defineConfig({
       server: { entry: "./server.ts" },
     }),
     viteReact(),
-    nitro(),
+    nitro({
+      output: {
+        dir: "dist",
+        serverDir: "dist/server",
+        publicDir: "dist/client",
+      },
+    }),
   ],
 });
